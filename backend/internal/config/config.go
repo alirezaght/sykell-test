@@ -11,6 +11,8 @@ type Config struct {
 	DatabaseURL string
 	JWTSecret   string
 	Environment string
+	TemporalHostPort string
+	Namespace		string
 }
 
 func Load() (*Config, error) {
@@ -22,6 +24,8 @@ func Load() (*Config, error) {
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://user:password@localhost/sykell_db?sslmode=disable"),
 		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key"),
 		Environment: getEnv("ENVIRONMENT", "development"),
+		TemporalHostPort: getEnv("TEMPORAL_HOST_PORT", "localhost:7233"),
+		Namespace:   getEnv("TEMPORAL_NAMESPACE", "default"),
 	}
 
 	return cfg, nil

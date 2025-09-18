@@ -3,6 +3,11 @@ SELECT COUNT(*)
 FROM urls
 WHERE user_id = ?;
 
+-- name: GetUrlByIdAndUserId :one
+SELECT id, user_id, normalized_url, domain, created_at, updated_at
+FROM urls
+WHERE id = ? AND user_id = ?;
+
 -- name: CountUrlsWithFilter :one
 SELECT COUNT(*)
 FROM urls u
@@ -27,6 +32,7 @@ SELECT
     u.created_at as url_created_at,
     c.id as crawl_id,
     c.status,
+    c.workflow_id,
     c.queued_at,
     c.started_at,
     c.finished_at,
@@ -104,17 +110,6 @@ INSERT INTO urls (
     ?, ?, ?
 );
 
-
--- name: GetAllNotCrawledUrls :many
-SELECT id, user_id, normalized_url, domain, created_at
-FROM urls
-WHERE id NOT IN (
-    SELECT DISTINCT url_id 
-    FROM crawls 
-    WHERE status IN ('queued', 'running')
-)
-ORDER BY created_at ASC
-LIMIT ?;
 
 -- name: DeleteURLByIdAndUserId :exec
 DELETE FROM urls

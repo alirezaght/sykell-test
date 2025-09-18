@@ -1,11 +1,12 @@
 CREATE TABLE crawls (
   id              CHAR(36) PRIMARY KEY DEFAULT (UUID()),
   url_id          CHAR(36) NOT NULL,
-  status          ENUM('queued','running','stopped','done','error') NOT NULL DEFAULT 'queued',
+  status          ENUM('queued', 'running', 'stopped', 'done', 'error') NOT NULL DEFAULT 'queued',
   queued_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   started_at      TIMESTAMP NULL,
   finished_at     TIMESTAMP NULL,
   error_message   TEXT NULL,
+  workflow_id     VARCHAR(512) NOT NULL,
 
   html_version    VARCHAR(32) NULL,
   page_title      VARCHAR(512) NULL,
@@ -24,8 +25,9 @@ CREATE TABLE crawls (
   updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_crawls_url FOREIGN KEY (url_id) REFERENCES urls(id) ON DELETE CASCADE,
-
+  UNIQUE KEY uq_crawls_workflow_id (workflow_id),
   KEY idx_crawls_url (url_id),
   KEY idx_crawls_status (status),
-  KEY idx_crawls_finished_at (finished_at)
+  KEY idx_crawls_finished_at (finished_at),
+  KEY idx_crawls_workflow_id (workflow_id)
 );
