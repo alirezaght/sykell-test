@@ -221,11 +221,26 @@ export const UrlTable: React.FC<UrlTableProps> = ({
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                   {item.h3_count ?? '-'}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {formatDate(item.url_created_at)}
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                  {item.h4_count ?? '-'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                  {item.h5_count ?? '-'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                  {item.h6_count ?? '-'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                  {item.has_login_form === true ? (
+                    <span className="text-green-600 font-medium">Yes</span>
+                  ) : item.has_login_form === false ? (
+                    <span className="text-gray-600">No</span>
+                  ) : (
+                    '-'
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {formatDate(item.finished_at)}
+                  {formatDate(item.url_created_at)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">

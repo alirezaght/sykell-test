@@ -1,7 +1,10 @@
 package user
 
 import (
+	"log"
 	"net/http"
+	"time"
+
 	"github.com/labstack/echo/v4"
 )
 
@@ -33,6 +36,19 @@ func (h *UserHandler) Login(c echo.Context) error {
 			"error": err.Error(),
 		})
 	}
+
+	// Set HTTP-only cookie with the JWT token
+	cookie := &http.Cookie{
+		Name:     "token",
+		Value:    response.Token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		// Don't set SameSite for development - let browser decide
+		Expires:  time.Unix(response.ExpiresAt, 0),
+	}
+	c.SetCookie(cookie)
+	log.Printf("Login: Set cookie for user, token length: %d", len(response.Token))
 
 	return c.JSON(http.StatusOK, response)
 }
@@ -73,6 +89,25 @@ func (h *UserHandler) GetProfile(c echo.Context) error {
 		})
 	}
 
-
 	return c.JSON(http.StatusOK, user)
+}
+
+// Logout handles user logout by clearing the token cookie
+func (h *UserHandler) Logout(c echo.Context) error {
+	// Clear the token cookie
+	cookie := &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteLaxMode,
+		Expires:  time.Unix(0, 0), // Set to past date to delete cookie
+		MaxAge:   -1,
+	}
+	c.SetCookie(cookie)
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": "Logged out successfully",
+	})
 }

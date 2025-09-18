@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"time"
 
 	"sykell-backend/internal/config"
 	"sykell-backend/internal/crawl"
@@ -48,14 +49,14 @@ func main() {
 		Namespace: cfg.Namespace,
 		ConnectionOptions: client.ConnectionOptions{
 			TLS: nil, // Disable TLS for local development
+			KeepAliveTime:   10 * time.Second, // seconds
+			KeepAliveTimeout: 20 * time.Second, // seconds						
 		},
 	})
 	if err != nil {
 		log.Printf("Failed to create Temporal client: %v", err)
 		log.Printf("Make sure Temporal server is running with: docker compose up -d")
-		log.Printf("Temporal connection required for crawling functionality")
-		// Don't fatal here - allow server to start without Temporal for other endpoints
-		temporalClient = nil
+		log.Printf("Temporal connection required for crawling functionality")		
 	} else {
 		log.Printf("Successfully connected to Temporal server")
 	}
@@ -69,15 +70,10 @@ func main() {
 	urlService := url.NewService(db, cfg)
 	urlHandler := url.NewHandler(urlService)
 
-	var crawlService *crawl.CrawlService
-	var crawlHandler *crawl.CrawlHandler
+	crawlService := crawl.NewCrawlService(db, cfg, temporalClient)
+	crawlHandler := crawl.NewCrawlHandler(crawlService)
 	
-	if temporalClient != nil {
-		crawlService = crawl.NewCrawlService(db, cfg, temporalClient)
-		crawlHandler = crawl.NewCrawlHandler(crawlService)
-	} else {
-		log.Printf("Warning: Crawling functionality disabled due to Temporal connection failure")
-	}
+	
 
 	// Create Echo instance
 	e := echo.New()
@@ -85,10 +81,20 @@ func main() {
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	
+	// Add custom middleware to log all requests for debugging
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			log.Printf("Request: %s %s from %s", c.Request().Method, c.Request().URL.Path, c.RealIP())
+			return next(c)
+		}
+	})
+	
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{echo.GET, echo.PUT, echo.POST, echo.DELETE, echo.OPTIONS},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowOrigins:     []string{"http://localhost:5173"}, // Add specific origins for cookie support
+		AllowMethods:     []string{echo.GET, echo.PUT, echo.POST, echo.DELETE, echo.OPTIONS},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowCredentials: true, // Enable credentials (cookies) support
 	}))
 
 	// Routes
@@ -108,9 +114,17 @@ func main() {
 	// API routes
 	api := e.Group("/api/v1")
 	
+	// Test routes for debugging
+	api.GET("/test", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]string{
+			"message": "API is working",
+		})
+	})
+
 	// Auth routes (public)
 	api.POST("/auth/register", userHandler.Register)
-	api.POST("/auth/login", userHandler.Login)	
+	api.POST("/auth/login", userHandler.Login)
+	api.POST("/auth/logout", userHandler.Logout)	
 		
 	
 	// Protected routes (require JWT)
@@ -124,10 +138,17 @@ func main() {
 	protected.DELETE("/urls/:id", urlHandler.RemoveURL)
 	
 	// Crawl routes (only if Temporal is available)
-	if crawlHandler != nil {
-		protected.POST("/crawl/start/:id", crawlHandler.StartCrawl)
-		protected.POST("/crawl/stop/:id", crawlHandler.StopCrawl)
-	}
+	
+	log.Printf("Registering crawl routes...")
+	protected.POST("/crawl/start/:id", crawlHandler.StartCrawl)
+	protected.POST("/crawl/stop/:id", crawlHandler.StopCrawl)
+	protected.GET("/crawl/stream", crawlHandler.StreamCrawlUpdates)
+		
+	// Internal notification endpoint for Temporal worker to trigger SSE notifications
+	api.POST("/internal/notify-crawl-update", crawlHandler.NotifyCrawlUpdate)
+	
+	log.Printf("Crawl routes registered successfully")
+	
 
 	// Start server
 	log.Printf("Server starting on port %s", cfg.Port)

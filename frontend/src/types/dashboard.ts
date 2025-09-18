@@ -53,8 +53,11 @@ export type SortColumn =
   | 'h1_count'
   | 'h2_count'
   | 'h3_count'
-  | 'created_at'
-  | 'finished_at';
+  | 'h4_count'
+  | 'h5_count'
+  | 'h6_count'
+  | 'has_login_form'
+  | 'created_at';
 
 export interface CreateUrlRequest {
   normalized_url: string;

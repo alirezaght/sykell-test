@@ -10,6 +10,7 @@ import (
 	"sykell-backend/internal/db"
 	"sykell-backend/internal/utils"
 	"time"
+
 	_ "github.com/go-sql-driver/mysql"
 	"golang.org/x/net/html"
 )
@@ -43,8 +44,13 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 			ErrorMessage: sql.NullString{String: err.Error(), Valid: true},
 			ID: input.CrawlID,
 		})
+		// Notify SSE that crawl failed
+		NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 		return err
 	}
+
+	// Notify SSE that crawl started
+	NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 
 	// Create HTTP client with timeout
 	client := &http.Client{
@@ -67,6 +73,8 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 			ErrorMessage: sql.NullString{String: fmt.Sprintf("HTTP error: %d", resp.StatusCode), Valid: true},
 			ID: input.CrawlID,
 		})
+		// Notify SSE that crawl failed
+		NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 		return fmt.Errorf("HTTP error: %d", resp.StatusCode)
 	}
 
@@ -77,6 +85,8 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 			ErrorMessage: sql.NullString{String: err.Error(), Valid: true},
 			ID: input.CrawlID,
 		})
+		// Notify SSE that crawl failed
+		NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 		return fmt.Errorf("failed to parse HTML: %w", err)
 	}
 
@@ -87,7 +97,7 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 	
 
 	// Extract page title
-	pageTitle := utils.ExtractTitle(doc)
+	pageTitle := utils.SanitizeText(utils.ExtractTitle(doc), 500)
 	
 
 	// Count headings
@@ -113,16 +123,19 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 			statusCode = sql.NullInt32{Int32: int32(*url.StatusCode), Valid: true}
 		}
 		
-		queries.CreateInaccessibleLink(ctx, db.CreateInaccessibleLinkParams{
+		// Sanitize anchor text to prevent encoding issues
+		sanitizedAnchorText := utils.SanitizeText(url.AnchorText, 1024)
+		
+		_, err := queries.CreateInaccessibleLink(ctx, db.CreateInaccessibleLinkParams{
 			CrawlID:     input.CrawlID,
 			Href:        url.Href,
 			AbsoluteUrl: url.AbsoluteURL,			
 			IsInternal:  url.IsInternal,
 			StatusCode:  statusCode,
-			AnchorText:  sql.NullString{String: url.AnchorText, Valid: true},
+			AnchorText:  sql.NullString{String: sanitizedAnchorText, Valid: sanitizedAnchorText != ""},
 		})
 		if err != nil {
-			fmt.Println("Error saving link:", err)
+			log.Printf("Error saving link (href: %s, anchor: %s): %v", url.Href, sanitizedAnchorText, err)
 		}
 	}
 
@@ -152,8 +165,13 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 			ErrorMessage: sql.NullString{String: err.Error(), Valid: true},
 			ID: input.CrawlID,
 		})
+		// Notify SSE that crawl failed
+		NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 		return fmt.Errorf("failed to update crawl result: %w", err)
 	}
+
+	// Notify SSE that crawl completed successfully
+	NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 
 	return nil
 }

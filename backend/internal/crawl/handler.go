@@ -70,3 +70,27 @@ func (h *CrawlHandler) StopCrawl(c echo.Context) error {
 		"message": "Crawl stopped successfully",
 	})
 }
+
+// NotifyCrawlUpdate handles internal notifications to trigger SSE updates
+func (h *CrawlHandler) NotifyCrawlUpdate(c echo.Context) error {
+		var request struct {
+			UserID string `json:"user_id"`
+			URLID  string `json:"url_id"`
+		}
+		
+		if err := c.Bind(&request); err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"error": "Invalid request body",
+			})
+		}
+		
+		log.Printf("Received internal notification for user %s, URL %s", request.UserID, request.URLID)
+		log.Printf("About to call NotifyCrawlUpdate with userID=%s, urlID=%s", request.UserID, request.URLID)
+		
+		// Trigger the SSE notification
+		NotifyCrawlUpdate(request.UserID, request.URLID)
+		
+		return c.JSON(http.StatusOK, map[string]string{
+			"message": "Notification sent",
+		})
+	}

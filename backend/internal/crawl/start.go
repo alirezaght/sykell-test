@@ -2,7 +2,6 @@ package crawl
 
 import (
 	"context"
-	"fmt"
 	"sykell-backend/internal/db"
 
 	"github.com/google/uuid"
@@ -10,11 +9,7 @@ import (
 )
 
 // StartCrawl initiates a crawl for the specified URL by the user
-func (s *CrawlService) StartCrawl(ctx context.Context, userID string, urlID string) error {
-	// Check if Temporal client is available
-	if s.temporalClient == nil {
-		return fmt.Errorf("crawling functionality is unavailable: Temporal client not connected")
-	}
+func (s *CrawlService) StartCrawl(ctx context.Context, userID string, urlID string) error {	
 	
 	queries := db.New(s.db)
 	
@@ -57,6 +52,7 @@ func (s *CrawlService) StartCrawl(ctx context.Context, userID string, urlID stri
 	}
 	
 	// Start the workflow
+	
 	_, err = s.temporalClient.ExecuteWorkflow(ctx, workflowOptions, WorkflowName, WorlFlowInput{
 		URLID: url.ID,
 		UserID: userID,

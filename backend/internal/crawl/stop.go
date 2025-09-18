@@ -11,11 +11,7 @@ import (
 func (s *CrawlService) StopCrawl(ctx context.Context, userID string, urlID string) error {
 	log.Printf("StopCrawl called for userID: %s, urlID: %s", userID, urlID)
 	
-	// Check if Temporal client is available
-	if s.temporalClient == nil {
-		log.Printf("Temporal client is nil")
-		return fmt.Errorf("crawling functionality is unavailable: Temporal client not connected")
-	}
+	
 	
 	queries := db.New(s.db)
 	
@@ -49,13 +45,16 @@ func (s *CrawlService) StopCrawl(ctx context.Context, userID string, urlID strin
 		}
 		log.Printf("Successfully updated crawl status to stopped for crawl ID: %s", crawl.ID)
 
-		// Signal the workflow to stop	
+		// Signal the workflow to stop		
 		err = s.temporalClient.CancelWorkflow(ctx, crawl.WorkflowID, "")
 		if err != nil {
 			log.Printf("Error canceling workflow: %v", err)
 			return fmt.Errorf("failed to cancel workflow: %w", err)
 		}
 		log.Printf("Successfully canceled workflow: %s", crawl.WorkflowID)
+		
+		// Notify SSE that crawl was stopped
+		NotifyCrawlUpdateHTTP(userID, urlID)
 		
 	}
 	

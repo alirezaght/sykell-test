@@ -46,6 +46,8 @@ func StartWorker(config *config.Config) error {
 		Namespace:      config.Namespace,
 		ConnectionOptions: client.ConnectionOptions{
 			TLS: nil, // Disable TLS for local development
+			KeepAliveTime:  10 * time.Second, // seconds
+			KeepAliveTimeout: 20 * time.Second, // seconds			
 		},
 	}
 	

@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useDashboardData, useCreateUrl, useDeleteUrl, useBatchCrawl, useStartCrawl, useStopCrawl } from '../hooks/useDashboard';
+import { useCrawlUpdates } from '../hooks/useCrawlUpdates';
+import { useAuth } from '../context/AuthContext';
 import type { DashboardFilters, SortColumn } from '../types/dashboard';
 import { SearchFilter } from '../components/SearchFilter';
 import { UrlTable } from '../components/UrlTable';
@@ -10,6 +12,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 const DEFAULT_PAGE_SIZE = 20;
 
 export const Dashboard: React.FC = () => {
+  const { token } = useAuth();
   const [filters, setFilters] = useState<DashboardFilters>({
     page: 1,
     page_size: DEFAULT_PAGE_SIZE,
@@ -18,6 +21,9 @@ export const Dashboard: React.FC = () => {
   });
   const [isAddUrlModalOpen, setIsAddUrlModalOpen] = useState(false);
   const [selectedUrls, setSelectedUrls] = useState<string[]>([]);
+
+  // Initialize SSE connection for real-time crawl updates
+  const { isConnected } = useCrawlUpdates(token);
 
   const { data, isLoading, error, refetch } = useDashboardData(filters);
   const createUrlMutation = useCreateUrl();
@@ -132,11 +138,14 @@ export const Dashboard: React.FC = () => {
     { key: 'internal_links' as SortColumn, label: 'Internal Links' },
     { key: 'external_links' as SortColumn, label: 'External Links' },
     { key: 'inaccessible_links' as SortColumn, label: 'Inaccessible Links' },
-    { key: 'h1_count' as SortColumn, label: 'H1 Count' },
-    { key: 'h2_count' as SortColumn, label: 'H2 Count' },
-    { key: 'h3_count' as SortColumn, label: 'H3 Count' },
+    { key: 'h1_count' as SortColumn, label: 'H1' },
+    { key: 'h2_count' as SortColumn, label: 'H2' },
+    { key: 'h3_count' as SortColumn, label: 'H3' },
+    { key: 'h4_count' as SortColumn, label: 'H4' },
+    { key: 'h5_count' as SortColumn, label: 'H5' },
+    { key: 'h6_count' as SortColumn, label: 'H6' },
+    { key: 'has_login_form' as SortColumn, label: 'Login Form' },
     { key: 'created_at' as SortColumn, label: 'Created At' },
-    { key: 'finished_at' as SortColumn, label: 'Last Crawled' },
   ], []);
 
   if (error) {
@@ -156,7 +165,21 @@ export const Dashboard: React.FC = () => {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold text-gray-900">URL Dashboard</h1>
+          <div className="flex items-center space-x-4">
+            <h1 className="text-3xl font-bold text-gray-900">URL Dashboard</h1>
+            {/* SSE Connection Status Indicator */}
+            <div className="flex items-center space-x-2">
+              <div 
+                className={`w-3 h-3 rounded-full ${
+                  isConnected ? 'bg-green-500' : 'bg-red-500'
+                }`}
+                title={isConnected ? 'Live updates connected' : 'Live updates disconnected'}
+              />
+              <span className="text-sm text-gray-600">
+                {isConnected ? 'Live' : 'Offline'}
+              </span>
+            </div>
+          </div>
           <button
             onClick={() => setIsAddUrlModalOpen(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
