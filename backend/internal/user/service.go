@@ -12,8 +12,7 @@ type UserService struct {
 }
 
 // NewUserService creates a new UserService
-func NewUserService(database *sql.DB) *UserService {
-	config, _ := config.Load()
+func NewUserService(database *sql.DB, config *config.Config) *UserService {	
 	return &UserService{
 		db:         database,
 		config: config,

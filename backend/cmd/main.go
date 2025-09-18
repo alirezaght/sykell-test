@@ -35,7 +35,7 @@ func main() {
 	log.Println("Database connected successfully")
 
 	// Initialize services
-	userService := user.NewUserService(db)
+	userService := user.NewUserService(db, cfg)
 	userHandler := user.NewUserHandler(userService)
 
 	// Create Echo instance
