@@ -50,7 +50,8 @@ Thumbs.db
 tmp/
 temp/
 
-# Generated files
+# Generated files (SQLC auto-generated code)
 internal/db/db.go
 internal/db/models.go
 internal/db/querier.go
+internal/db/*.sql.go
