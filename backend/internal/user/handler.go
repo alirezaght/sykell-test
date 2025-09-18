@@ -62,12 +62,7 @@ func (h *UserHandler) Register(c echo.Context) error {
 
 // GetProfile retrieves the profile of the authenticated user
 func (h *UserHandler) GetProfile(c echo.Context) error {
-	userID := c.Get("user_id")
-	if userID == nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"error": "Unauthorized",
-		})
-	}
+	userID := c.Get("user_id")	
 
 	ctx := c.Request().Context()
 

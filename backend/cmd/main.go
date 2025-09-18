@@ -7,7 +7,7 @@ import (
 
 	"sykell-backend/internal/config"
 	"sykell-backend/internal/user"
-
+	"sykell-backend/internal/url"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -37,6 +37,9 @@ func main() {
 	// Initialize services
 	userService := user.NewUserService(db, cfg)
 	userHandler := user.NewUserHandler(userService)
+
+	urlService := url.NewService(db, cfg)
+	urlHandler := url.NewHandler(urlService)
 
 	// Create Echo instance
 	e := echo.New()
@@ -74,9 +77,13 @@ func main() {
 	
 	// Protected routes (require JWT)
 	protected := api.Group("", sykellMiddleware.JWTMiddleware([]byte(cfg.JWTSecret)))
+	// Profile route
 	protected.GET("/auth/me", userHandler.GetProfile)
 	
-	
+	// Url routes
+	protected.GET("/urls", urlHandler.ListURLs)
+	protected.POST("/urls", urlHandler.AddURL)
+	protected.DELETE("/urls/:id", urlHandler.RemoveURL)
 		
 
 	// Start server
