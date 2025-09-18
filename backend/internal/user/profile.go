@@ -8,7 +8,7 @@ import (
 )
 
 // GetProfile returns the profile of the authenticated user
-func (s *UserService) GetProfile(ctx context.Context, userID string) (*db.User, error) {
+func (s *UserService) GetProfile(ctx context.Context, userID string) (*UserResponse, error) {
 	queries := db.New(s.db)
 	user, err := queries.GetUser(ctx, userID)
 	if err != nil {
@@ -18,7 +18,8 @@ func (s *UserService) GetProfile(ctx context.Context, userID string) (*db.User, 
 		return nil, err
 	}
 	
-	user.PasswordHash = "" // Don't return password hash
+	// Convert to response format with proper date handling
+	userResponse := ToUserResponse(user)
 
-	return &user, nil
+	return &userResponse, nil
 }

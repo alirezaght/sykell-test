@@ -67,7 +67,7 @@ func TestUserService_Login(t *testing.T) {
 				assert.NotEmpty(t, result.Token)
 				assert.Equal(t, "test@example.com", result.User.Email)
 				assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", result.User.ID)
-				assert.Empty(t, result.User.PasswordHash, "password hash should be removed from response")
+				// UserResponse doesn't have PasswordHash field, which is correct for security
 				assert.Greater(t, result.ExpiresAt, time.Now().Unix())
 			},
 		},

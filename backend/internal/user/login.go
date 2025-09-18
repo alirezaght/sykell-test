@@ -31,9 +31,8 @@ func (s *UserService) Login(ctx context.Context, req LoginRequest) (*LoginRespon
 		return nil, err
 	}
 
-	// Remove password hash from user object for response
-	userResponse := user
-	userResponse.PasswordHash = "" // Don't return password hash
+	// Convert to response format with proper date handling
+	userResponse := ToUserResponse(user)
 
 	return &LoginResponse{
 		Token:     token,
