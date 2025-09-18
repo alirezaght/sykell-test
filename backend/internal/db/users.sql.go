@@ -32,7 +32,7 @@ DELETE FROM users
 WHERE id = ?
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
+func (q *Queries) DeleteUser(ctx context.Context, id string) error {
 	_, err := q.db.ExecContext(ctx, deleteUser, id)
 	return err
 }
@@ -43,7 +43,7 @@ FROM users
 WHERE id = ? LIMIT 1
 `
 
-func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
+func (q *Queries) GetUser(ctx context.Context, id string) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUser, id)
 	var i User
 	err := row.Scan(
@@ -82,7 +82,7 @@ ORDER BY created_at DESC
 `
 
 type ListUsersRow struct {
-	ID        int32        `json:"id"`
+	ID        string       `json:"id"`
 	Email     string       `json:"email"`
 	CreatedAt sql.NullTime `json:"created_at"`
 	UpdatedAt sql.NullTime `json:"updated_at"`
@@ -124,7 +124,7 @@ WHERE id = ?
 
 type UpdateUserParams struct {
 	Email string `json:"email"`
-	ID    int32  `json:"id"`
+	ID    string `json:"id"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
