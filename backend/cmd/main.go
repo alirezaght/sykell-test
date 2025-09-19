@@ -3,9 +3,8 @@ package main
 import (
 	"database/sql"
 	"net/http"
-
-	"sykell-backend/internal/config"
 	"sykell-backend/internal/crawl"
+	"sykell-backend/internal/config"	
 	"sykell-backend/internal/logger"
 	sykellMiddleware "sykell-backend/internal/middleware"
 	"sykell-backend/internal/temporal"
