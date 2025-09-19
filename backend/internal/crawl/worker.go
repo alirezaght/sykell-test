@@ -1,14 +1,15 @@
 package crawl
 
 import (
-	"log"
 	"sykell-backend/internal/config"
+	"sykell-backend/internal/logger"
 	"time"
 
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
+	"go.uber.org/zap"
 )
 
 func CrawlWorkflow(ctx workflow.Context, input WorlFlowInput) error {
@@ -16,9 +17,10 @@ func CrawlWorkflow(ctx workflow.Context, input WorlFlowInput) error {
 	logger.Info("Starting crawl workflow", "url", input.URL, "crawl_id", input.CrawlID, "user_id", input.UserID)
 
 	activityOptions := workflow.ActivityOptions{
-		StartToCloseTimeout: 10 * time.Minute, // Increased timeout for slow websites
-		ScheduleToCloseTimeout: 15 * time.Minute, // Overall timeout including retries
-		HeartbeatTimeout: 30 * time.Second, // Add heartbeat for long-running activities
+		StartToCloseTimeout: 10 * time.Minute,
+		ScheduleToCloseTimeout: 15 * time.Minute, 
+		ScheduleToStartTimeout: 30 * time.Minute,
+		HeartbeatTimeout: 5 * time.Minute, 
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval:    time.Second,
 			BackoffCoefficient: 2.0,
@@ -41,7 +43,7 @@ func CrawlWorkflow(ctx workflow.Context, input WorlFlowInput) error {
 }
 
 func StartWorker(config *config.Config) error {	
-	log.Printf("Attempting to connect to Temporal server at %s", config.TemporalHostPort)
+	logger.Info("Attempting to connect to Temporal server", zap.String("host_port", config.TemporalHostPort))
 	
 	// Create Temporal client with better connection settings
 	clientOptions := client.Options{
@@ -54,26 +56,31 @@ func StartWorker(config *config.Config) error {
 		},
 	}
 	
-	log.Printf("Connecting to Temporal with options: HostPort=%s, Namespace=%s", 
-		clientOptions.HostPort, clientOptions.Namespace)
+	logger.Info("Connecting to Temporal with options", 
+		zap.String("host_port", clientOptions.HostPort),
+		zap.String("namespace", clientOptions.Namespace))
 	
 	temporalClient, err := client.Dial(clientOptions)
 	if err != nil {
-		log.Printf("Failed to create Temporal client: %v", err)
-		log.Printf("Make sure Temporal server is running. Start it with: docker compose up -d")
+		logger.Error("Failed to create Temporal client", zap.Error(err))
+		logger.Info("Make sure Temporal server is running. Start it with: docker compose up -d")
 		return err
 	}
 	
 	// Ensure proper cleanup
 	defer func() {
-		log.Printf("Closing Temporal client connection")
+		logger.Info("Closing Temporal client connection")
 		temporalClient.Close()
 	}()
 
-	log.Printf("Successfully connected to Temporal server")
+	logger.Info("Successfully connected to Temporal server")
 
-	// Create worker
-	w := worker.New(temporalClient, TaskQueueName, worker.Options{})
+	// Create worker with debug-enabled options
+	w := worker.New(temporalClient, TaskQueueName, worker.Options{
+		EnableLoggingInReplay: true, // This ensures logs are visible during replay		
+		MaxConcurrentActivityExecutionSize: 2,
+		
+	})
 
 	// Register workflows
 	w.RegisterWorkflow(CrawlWorkflow)
@@ -81,7 +88,7 @@ func StartWorker(config *config.Config) error {
 	// Register activities
 	w.RegisterActivity(CrawlURLActivity)
 	
-	log.Printf("Starting Temporal worker on task queue: %s", TaskQueueName)
+	logger.Info("Starting Temporal worker on task queue", zap.String("task_queue", TaskQueueName))
 	
 	// Start listening for tasks
 	return w.Run(worker.InterruptCh())

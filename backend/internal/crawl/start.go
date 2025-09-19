@@ -43,6 +43,7 @@ func (s *CrawlService) StartCrawl(ctx context.Context, userID string, urlID stri
 		TaskQueue: TaskQueueName,
 		WorkflowExecutionTimeout: 10 * time.Minute, // Set explicit workflow timeout
 		WorkflowTaskTimeout:      time.Minute,      // Set workflow task timeout		
+		StartDelay: 3 * time.Second,
 	}
 	
 	// Start the workflow

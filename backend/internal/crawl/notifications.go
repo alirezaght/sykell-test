@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"time"
+
+	"sykell-backend/internal/logger"
+
+	"go.uber.org/zap"
 )
 
 // NotificationRequest represents the payload for internal notification requests
@@ -34,7 +37,7 @@ func NotifyCrawlUpdateHTTP(userID, urlID string) {
 	// Marshal to JSON
 	jsonData, err := json.Marshal(request)
 	if err != nil {
-		log.Printf("Error marshaling notification request: %v", err)
+		logger.Error("Error marshaling notification request", zap.Error(err))
 		return
 	}
 	
@@ -47,15 +50,17 @@ func NotifyCrawlUpdateHTTP(userID, urlID string) {
 	
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
-		log.Printf("Error sending notification to main server: %v", err)
+		logger.Error("Error sending notification to main server", zap.Error(err))
 		return
 	}
 	defer resp.Body.Close()
 	
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("Notification request failed with status: %d", resp.StatusCode)
+		logger.Warn("Notification request failed", zap.Int("status_code", resp.StatusCode))
 		return
 	}
 	
-	log.Printf("Successfully sent crawl update notification for user %s, URL %s", userID, urlID)
+	logger.Info("Successfully sent crawl update notification", 
+		zap.String("user_id", userID), 
+		zap.String("url_id", urlID))
 }

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useDashboardData, useCreateUrl, useDeleteUrl, useBatchCrawl, useStartCrawl, useStopCrawl } from '../hooks/useDashboard';
+import { useDashboardData, useCreateUrl, useDeleteUrl, useBatchDelete, useBatchCrawl, useStartCrawl, useStopCrawl } from '../hooks/useDashboard';
 import { useCrawlUpdates } from '../hooks/useCrawlUpdates';
 import { useAuth } from '../context/AuthContext';
 import type { DashboardFilters, SortColumn } from '../types/dashboard';
@@ -28,6 +28,7 @@ export const Dashboard: React.FC = () => {
   const { data, isLoading, error, refetch } = useDashboardData(filters);
   const createUrlMutation = useCreateUrl();
   const deleteUrlMutation = useDeleteUrl();
+  const batchDeleteMutation = useBatchDelete();
   const batchCrawlMutation = useBatchCrawl();
   const startCrawlMutation = useStartCrawl();
   const stopCrawlMutation = useStopCrawl();
@@ -110,6 +111,24 @@ export const Dashboard: React.FC = () => {
       refetch();
     } catch (error) {
       console.error(`Failed to ${action} batch crawl:`, error);
+    }
+  };
+
+  const handleBatchDelete = async (urlIds: string[]) => {
+    try {
+      const result = await batchDeleteMutation.mutateAsync(urlIds);
+      setSelectedUrls([]); // Clear selection after batch operation
+      refetch();
+      
+      // You might want to show a toast notification here
+      if (result.failedCount > 0) {
+        console.warn(`Batch delete completed with errors: ${result.successCount} successful, ${result.failedCount} failed`);
+        // Optionally show error details: result.errors
+      } else {
+        console.log(`Successfully deleted ${result.successCount} URLs`);
+      }
+    } catch (error) {
+      console.error('Failed to batch delete URLs:', error);
     }
   };
 
@@ -204,17 +223,19 @@ export const Dashboard: React.FC = () => {
             currentSort={{ column: filters.sort_by, order: filters.sort_order }}
             onSort={handleSort}
             onDelete={handleDeleteUrl}
+            onBatchDelete={handleBatchDelete}
             onStartCrawl={handleStartCrawl}
             onStopCrawl={handleStopCrawl}
             onBatchCrawl={handleBatchCrawl}
             isDeleting={deleteUrlMutation.isPending}
+            isBatchDeleting={batchDeleteMutation.isPending}
             isCrawlLoading={isCrawlLoading}
             selectedUrls={selectedUrls}
             onSelectUrl={handleSelectUrl}
             onSelectAll={handleSelectAll}
           />
 
-          {data && data.total_pages > 1 && (
+          {data && (
             <div className="mt-6">
               <Pagination
                 currentPage={filters.page || 1}

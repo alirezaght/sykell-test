@@ -3,53 +3,59 @@ package crawl
 import (
 	"context"
 	"fmt"
-	"log"
+	"sykell-backend/internal/logger"
+
+	"go.uber.org/zap"
 )
 
 // StopCrawl stops an active crawl for the specified URL by the user
 func (s *CrawlService) StopCrawl(ctx context.Context, userID string, urlID string) error {
-	log.Printf("StopCrawl called for userID: %s, urlID: %s", userID, urlID)
+	logger.Info("StopCrawl called", 
+		zap.String("user_id", userID), 
+		zap.String("url_id", urlID))
 				
 	// Verify that the URL belongs to the user
 	url, err := s.repo.GetUrlByIdAndUserId(ctx, urlID, userID)
 	if err != nil {
-		log.Printf("Error getting URL by ID and user ID: %v", err)
+		logger.Error("Error getting URL by ID and user ID", zap.Error(err))
 		return err
 	}
-	log.Printf("Found URL: %s", url.NormalizedUrl)
+	logger.Info("Found URL", zap.String("normalized_url", url.NormalizedUrl))
 	
 	activeCrawls, err := s.repo.GetActiveCrawlsForUrlId(ctx, url.ID)
 
 	if err != nil {
-		log.Printf("Error getting active crawls: %v", err)
+		logger.Error("Error getting active crawls", zap.Error(err))
 		return err
 	}
 	
-	log.Printf("Found %d active crawls", len(activeCrawls))
+	logger.Info("Found active crawls", zap.Int("count", len(activeCrawls)))
 
 	for _, crawl := range activeCrawls {
-		log.Printf("Stopping crawl ID: %s, workflow ID: %s", crawl.ID, crawl.WorkflowID)
+		logger.Info("Stopping crawl", 
+			zap.String("crawl_id", crawl.ID), 
+			zap.String("workflow_id", crawl.WorkflowID))
 
 		err = s.repo.SetCrawlStopped(ctx, crawl.ID)
 		if err != nil {
-			log.Printf("Error updating crawl status: %v", err)
+			logger.Error("Error updating crawl status", zap.Error(err))
 			return fmt.Errorf("failed to update crawl status: %w", err)
 		}
-		log.Printf("Successfully updated crawl status to stopped for crawl ID: %s", crawl.ID)
+		logger.Info("Successfully updated crawl status to stopped", zap.String("crawl_id", crawl.ID))
 
 		// Signal the workflow to stop		
 		err = s.temporalService.GetTemporalClient().CancelWorkflow(ctx, crawl.WorkflowID, "")
 		if err != nil {
-			log.Printf("Error canceling workflow: %v", err)
+			logger.Error("Error canceling workflow", zap.Error(err))
 			return fmt.Errorf("failed to cancel workflow: %w", err)
 		}
-		log.Printf("Successfully canceled workflow: %s", crawl.WorkflowID)
+		logger.Info("Successfully canceled workflow", zap.String("workflow_id", crawl.WorkflowID))
 		
 		// Notify SSE that crawl was stopped
 		NotifyCrawlUpdateHTTP(userID, urlID)
 		
 	}
 	
-	log.Printf("StopCrawl completed successfully")
+	logger.Info("StopCrawl completed successfully")
 	return nil
 }

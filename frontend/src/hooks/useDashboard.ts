@@ -83,3 +83,17 @@ export const useStopCrawl = () => {
     },
   });
 };
+
+export const useBatchDelete = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: dashboardApi.batchDelete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['dashboard'],
+        refetchType: 'none'
+      });
+    },
+  });
+};

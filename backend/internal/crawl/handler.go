@@ -1,10 +1,11 @@
 package crawl
 
 import (
-	"log"
 	"net/http"
+	"sykell-backend/internal/logger"
 
 	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 )
 
 // CrawlHandler handles HTTP requests related to crawling
@@ -53,19 +54,24 @@ func (h *CrawlHandler) StopCrawl(c echo.Context) error {
 		})
 	}
 
-	log.Printf("StopCrawl handler called for user: %v, URL ID: %s", userID, urlID)
+	logger.Info("StopCrawl handler called", 
+		zap.String("user_id", userID.(string)), 
+		zap.String("url_id", urlID))
 
 	ctx := c.Request().Context()
 
 	err := h.crawlService.StopCrawl(ctx, userID.(string), urlID)
 	if err != nil {
-		log.Printf("Error in StopCrawl handler: %v", err)
+		logger.Error("Error in StopCrawl handler", 
+			zap.Error(err),
+			zap.String("user_id", userID.(string)),
+			zap.String("url_id", urlID))
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
 		})
 	}
 	
-	log.Printf("StopCrawl handler completed successfully")
+	logger.Info("StopCrawl handler completed successfully")
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Crawl stopped successfully",
 	})
@@ -84,8 +90,12 @@ func (h *CrawlHandler) NotifyCrawlUpdate(c echo.Context) error {
 			})
 		}
 		
-		log.Printf("Received internal notification for user %s, URL %s", request.UserID, request.URLID)
-		log.Printf("About to call NotifyCrawlUpdate with userID=%s, urlID=%s", request.UserID, request.URLID)
+		logger.Debug("Received internal notification", 
+			zap.String("user_id", request.UserID), 
+			zap.String("url_id", request.URLID))
+		logger.Debug("About to call NotifyCrawlUpdate", 
+			zap.String("user_id", request.UserID), 
+			zap.String("url_id", request.URLID))
 		
 		// Trigger the SSE notification
 		NotifyCrawlUpdate(request.UserID, request.URLID)

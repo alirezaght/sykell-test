@@ -12,10 +12,12 @@ interface UrlTableProps {
   currentSort: SortInfo;
   onSort: (column: SortColumn) => void;
   onDelete: (urlId: string) => void;
+  onBatchDelete: (urlIds: string[]) => void;
   onStartCrawl: (urlId: string) => void;
   onStopCrawl: (urlId: string) => void;
   onBatchCrawl: (urlIds: string[], action: 'start' | 'stop') => void;
   isDeleting: boolean;
+  isBatchDeleting: boolean;
   isCrawlLoading: boolean;
   selectedUrls: string[];
   onSelectUrl: (urlId: string) => void;
@@ -28,10 +30,12 @@ export const UrlTable: React.FC<UrlTableProps> = ({
   currentSort,
   onSort,
   onDelete,
+  onBatchDelete,
   onStartCrawl,
   onStopCrawl,
   onBatchCrawl,
   isDeleting,
+  isBatchDeleting,
   isCrawlLoading,
   selectedUrls,
   onSelectUrl,
@@ -122,17 +126,28 @@ export const UrlTable: React.FC<UrlTableProps> = ({
             <div className="flex space-x-2">
               <button
                 onClick={() => onBatchCrawl(selectedUrls, 'start')}
-                disabled={isCrawlLoading}
+                disabled={isCrawlLoading || isBatchDeleting}
                 className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Start Crawl
               </button>
               <button
                 onClick={() => onBatchCrawl(selectedUrls, 'stop')}
-                disabled={isCrawlLoading}
-                className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isCrawlLoading || isBatchDeleting}
+                className="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Stop Crawl
+              </button>
+              <button
+                onClick={() => {
+                  if (confirm(`Are you sure you want to delete ${selectedUrls.length} selected URL${selectedUrls.length > 1 ? 's' : ''}?`)) {
+                    onBatchDelete(selectedUrls);
+                  }
+                }}
+                disabled={isDeleting || isBatchDeleting || isCrawlLoading}
+                className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isBatchDeleting ? 'Deleting...' : 'Delete Selected'}
               </button>
             </div>
           </div>
@@ -166,9 +181,7 @@ export const UrlTable: React.FC<UrlTableProps> = ({
                   </div>
                 </th>
               ))}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -241,36 +254,7 @@ export const UrlTable: React.FC<UrlTableProps> = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {formatDate(item.url_created_at)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex space-x-2">
-                    {canStartCrawl(item.status) && (
-                      <button
-                        onClick={() => onStartCrawl(item.url_id)}
-                        disabled={isCrawlLoading}
-                        className="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Start
-                      </button>
-                    )}
-                    {canStopCrawl(item.status) && (
-                      <button
-                        onClick={() => onStopCrawl(item.url_id)}
-                        disabled={isCrawlLoading}
-                        className="text-orange-600 hover:text-orange-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Stop
-                      </button>
-                    )}
-                    <button
-                      onClick={() => onDelete(item.url_id)}
-                      disabled={isDeleting}
-                      className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
+                </td>                
               </tr>
             ))}
           </tbody>

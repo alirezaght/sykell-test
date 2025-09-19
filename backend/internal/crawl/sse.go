@@ -3,12 +3,13 @@ package crawl
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+	"sykell-backend/internal/logger"
 	"sync"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 )
 
 // SSEManager manages SSE connections and broadcasting
@@ -24,11 +25,11 @@ var sseManager = &SSEManager{
 
 // StreamCrawlUpdates handles SSE connections for crawl status notifications
 func (h *CrawlHandler) StreamCrawlUpdates(c echo.Context) error {
-	log.Printf("SSE connection attempt from %s", c.RealIP())
+	logger.Debug("SSE connection attempt", zap.String("remote_ip", c.RealIP()))
 	
 	// Get user ID from middleware context (JWT middleware handles cookie authentication)
 	userID := c.Get("user_id").(string)
-	log.Printf("SSE connection for user: %s", userID)
+	logger.Debug("SSE connection for user", zap.String("user_id", userID))
 	
 	// Set SSE headers
 	c.Response().Header().Set("Content-Type", "text/event-stream")
@@ -53,10 +54,10 @@ func (h *CrawlHandler) StreamCrawlUpdates(c echo.Context) error {
 		delete(sseManager.clients, userID)
 		close(clientChan)
 		sseManager.mutex.Unlock()
-		log.Printf("SSE connection closed for user %s", userID)
+		logger.Debug("SSE connection closed for user", zap.String("user_id", userID))
 	}()
 
-	log.Printf("SSE connection established for user %s", userID)
+	logger.Info("SSE connection established for user", zap.String("user_id", userID))
 	
 	// Send initial connection confirmation
 	initialNotification := SSENotification{
@@ -75,7 +76,7 @@ func (h *CrawlHandler) StreamCrawlUpdates(c echo.Context) error {
 			return nil
 		case notification := <-clientChan:
 			if err := sendSSEEvent(c, notification); err != nil {
-				log.Printf("Error sending SSE event: %v", err)
+				logger.Error("Error sending SSE event", zap.Error(err))
 				return err
 			}
 		case <-time.After(30 * time.Second):
@@ -104,17 +105,22 @@ func NotifyCrawlUpdate(userID, urlID string) {
 	sseManager.mutex.RLock()
 	defer sseManager.mutex.RUnlock()
 
-	log.Printf("SSE notification attempt: userID=%s, urlID=%s, total_clients=%d", userID, urlID, len(sseManager.clients))
+	logger.Debug("SSE notification attempt", 
+		zap.String("user_id", userID), 
+		zap.String("url_id", urlID), 
+		zap.Int("total_clients", len(sseManager.clients)))
 
 	if clientChan, exists := sseManager.clients[userID]; exists {
 		select {
 		case clientChan <- notification:
-			log.Printf("Sent crawl update notification for user %s, URL %s", userID, urlID)
+			logger.Debug("Sent crawl update notification", 
+				zap.String("user_id", userID), 
+				zap.String("url_id", urlID))
 		default:
-			log.Printf("Client channel full for user %s, dropping notification", userID)
+			logger.Warn("Client channel full, dropping notification", zap.String("user_id", userID))
 		}
 	} else {
-		log.Printf("No SSE connection found for user %s", userID)
+		logger.Debug("No SSE connection found for user", zap.String("user_id", userID))
 	}
 }
 
@@ -127,7 +133,7 @@ func sendSSEEvent(c echo.Context, notification SSENotification) error {
 		return err
 	}
 
-	log.Printf("Sending SSE event to client: %s", string(data))
+	logger.Debug("Sending SSE event to client", zap.String("data", string(data)))
 
 	// Write SSE format: data: {json}\n\n
 	_, err = fmt.Fprintf(c.Response().Writer, "data: %s\n\n", string(data))

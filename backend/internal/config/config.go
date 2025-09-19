@@ -14,6 +14,8 @@ type Config struct {
 	Environment string
 	TemporalHostPort string
 	Namespace		string
+	LogLevel    string
+	LogFormat   string
 }
 
 const DefaultTimeout = 5 * time.Second
@@ -29,6 +31,8 @@ func Load() (*Config, error) {
 		Environment: getEnv("ENVIRONMENT", "development"),
 		TemporalHostPort: getEnv("TEMPORAL_HOST_PORT", "localhost:7233"),
 		Namespace:   getEnv("TEMPORAL_NAMESPACE", "default"),
+		LogLevel:    getEnv("LOG_LEVEL", "info"),
+		LogFormat:   getEnv("LOG_FORMAT", "json"),
 	}
 
 	return cfg, nil

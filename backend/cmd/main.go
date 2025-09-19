@@ -2,11 +2,11 @@ package main
 
 import (
 	"database/sql"
-	"log"
 	"net/http"
 
 	"sykell-backend/internal/config"
 	"sykell-backend/internal/crawl"
+	"sykell-backend/internal/logger"
 	sykellMiddleware "sykell-backend/internal/middleware"
 	"sykell-backend/internal/temporal"
 	"sykell-backend/internal/url"
@@ -15,27 +15,37 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"go.uber.org/zap"
 )
 
 func main() {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("Failed to load configuration:", err)
+		// Use basic logging before logger is initialized
+		panic("Failed to load configuration: " + err.Error())
 	}
+
+	// Initialize logger
+	if err := logger.InitLogger(cfg.LogLevel, cfg.LogFormat, cfg.Environment); err != nil {
+		panic("Failed to initialize logger: " + err.Error())
+	}
+	defer logger.Sync()
+
+	logger.Info("Starting Sykell Backend", zap.String("version", "1.0.0"))
 
 	// Connect to database
 	db, err := sql.Open("mysql", cfg.DatabaseURL)
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		logger.Fatal("Failed to connect to database", zap.Error(err))
 	}
 	defer db.Close()
 
 	// Test database connection
 	if err := db.Ping(); err != nil {
-		log.Fatal("Failed to ping database:", err)
+		logger.Fatal("Failed to ping database", zap.Error(err))
 	}
-	log.Println("Database connected successfully")
+	logger.Info("Database connected successfully")
 
 	// Initialize services
 	userRepo := user.NewRepo(db)
@@ -64,16 +74,8 @@ func main() {
 	e := echo.New()
 
 	// Middleware
-	e.Use(middleware.Logger())
+	e.Use(sykellMiddleware.ZapLogger()) // Use our custom Zap logger
 	e.Use(middleware.Recover())
-	
-	// Add custom middleware to log all requests for debugging
-	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			log.Printf("Request: %s %s from %s", c.Request().Method, c.Request().URL.Path, c.RealIP())
-			return next(c)
-		}
-	})
 	
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"http://localhost:5173"}, // Add specific origins for cookie support
@@ -118,7 +120,7 @@ func main() {
 	
 	// Crawl routes (only if Temporal is available)
 	
-	log.Printf("Registering crawl routes...")
+	logger.Debug("Registering crawl routes...")
 	protected.POST("/crawl/start/:id", crawlHandler.StartCrawl)
 	protected.POST("/crawl/stop/:id", crawlHandler.StopCrawl)
 	
@@ -129,10 +131,10 @@ func main() {
 	// Internal notification endpoint for Temporal worker to trigger SSE notifications
 	api.POST("/internal/notify-crawl-update", crawlHandler.NotifyCrawlUpdate)
 	
-	log.Printf("Crawl routes registered successfully")
+	logger.Debug("Crawl routes registered successfully")
 	
 
 	// Start server
-	log.Printf("Server starting on port %s", cfg.Port)
+	logger.Info("Server starting", zap.String("port", cfg.Port))
 	e.Logger.Fatal(e.Start(":" + cfg.Port))
 }

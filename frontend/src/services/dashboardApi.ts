@@ -80,4 +80,27 @@ export const dashboardApi = {
   stopCrawl: async (urlId: string): Promise<void> => {
     await api.post(`/crawl/stop/${urlId}`);
   },
+
+  batchDelete: async (urlIds: string[]): Promise<{ successCount: number; failedCount: number; errors: string[] }> => {
+    let successCount = 0;
+    let failedCount = 0;
+    const errors: string[] = [];
+
+    // Process each URL individually
+    for (const urlId of urlIds) {
+      try {
+        await api.delete(`/urls/${urlId}`);
+        successCount++;
+      } catch (error) {
+        failedCount++;
+        errors.push(`Failed to delete URL ${urlId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    return {
+      successCount,
+      failedCount,
+      errors,
+    };
+  },
 };

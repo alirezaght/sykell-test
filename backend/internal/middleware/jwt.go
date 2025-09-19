@@ -1,12 +1,13 @@
 package middleware
 
 import (
-	"log"
 	"net/http"
 	"strings"
+	"sykell-backend/internal/logger"
 	"sykell-backend/internal/utils"
 
 	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 )
 
 // JWTMiddleware creates a middleware function for JWT authentication
@@ -17,14 +18,16 @@ func JWTMiddleware(jwtSecret []byte, fromCookie bool) echo.MiddlewareFunc {
 			var token string
 			
 			// Debug logging
-			log.Printf("JWT Middleware - Path: %s, fromCookie: %t", c.Request().URL.Path, fromCookie)
+			logger.Debug("JWT middleware processing request", 
+				zap.String("path", c.Request().URL.Path), 
+				zap.Bool("from_cookie", fromCookie))
 			
 			if fromCookie {
 				// Only check cookie
 				cookie, err := c.Cookie("token")
 				if err == nil && cookie.Value != "" {
 					token = cookie.Value
-					log.Printf("JWT Middleware - Using cookie token")
+					logger.Debug("JWT middleware using cookie token")
 				}
 				
 				if token == "" {
@@ -35,11 +38,12 @@ func JWTMiddleware(jwtSecret []byte, fromCookie bool) echo.MiddlewareFunc {
 			} else {
 				// Only check Authorization header
 				authHeader := c.Request().Header.Get("Authorization")
-				log.Printf("JWT Middleware - Authorization header: %s", authHeader)
+				// NEVER log the actual auth header as it contains the token
+				logger.Debug("JWT middleware checking Authorization header", zap.Bool("has_auth_header", authHeader != ""))
 				
 				if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
 					token = strings.TrimPrefix(authHeader, "Bearer ")
-					log.Printf("JWT Middleware - Using Bearer token")
+					logger.Debug("JWT middleware using Bearer token")
 				}
 				
 				if token == "" {
@@ -52,13 +56,13 @@ func JWTMiddleware(jwtSecret []byte, fromCookie bool) echo.MiddlewareFunc {
 			// Validate the token
 			claims, err := utils.ValidateJWT(token, jwtSecret)
 			if err != nil {
-				log.Printf("JWT Middleware - Token validation failed: %v", err)
+				logger.Warn("JWT middleware token validation failed", zap.Error(err))
 				return c.JSON(http.StatusUnauthorized, map[string]string{
 					"error": "Invalid token",
 				})
 			}
 
-			log.Printf("JWT Middleware - Authentication successful for user: %s", claims.UserID)
+			logger.Debug("JWT middleware authentication successful", zap.String("user_id", claims.UserID))
 
 			// Store user information in context
 			c.Set("user_id", claims.UserID)

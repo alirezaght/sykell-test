@@ -4,14 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"net/http"
 	"sykell-backend/internal/config"
 	"sykell-backend/internal/db"
 	"sykell-backend/internal/utils"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"go.temporal.io/sdk/activity"
 	"golang.org/x/net/html"
 )
@@ -45,13 +44,33 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 
 	repo := NewRepo(dbSQL)
 	
+	// Defer function to handle error cases and set crawl status to error
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error("Crawl activity panicked", "panic", r, "crawl_id", input.CrawlID)
+			bctx, cancel := context.WithTimeout(context.Background(), config.DefaultTimeout)
+			defer cancel()
+			repo.SetCrawlError(bctx, input.CrawlID, fmt.Sprintf("Activity panicked: %v", r))
+			NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
+		}
+	}()
+	
+	// Track if we successfully complete the crawl
+	var crawlCompleted bool
+	defer func() {
+		if !crawlCompleted {
+			logger.Error("Crawl did not complete successfully", "crawl_id", input.CrawlID)			
+			bctx, cancel := context.WithTimeout(context.Background(), config.DefaultTimeout)
+			defer cancel()
+			repo.SetCrawlError(bctx, input.CrawlID, "Crawl failed to complete (timeout, error, or cancellation)")
+			NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
+		}
+	}()
+	
 
 	err = repo.SetCrawlRunning(ctx, input.CrawlID)
 	if err != nil {
 		logger.Error("Failed to set crawl running", "error", err, "crawl_id", input.CrawlID)
-		repo.SetCrawlError(ctx, input.CrawlID, fmt.Sprintf("Failed to set crawl running: %v", err))
-		// Notify SSE that crawl failed
-		NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 		return err
 	}
 
@@ -70,8 +89,6 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 	req, err := http.NewRequestWithContext(ctx, "GET", input.URL, nil)
 	if err != nil {
 		logger.Error("Failed to create HTTP request", "error", err, "url", input.URL)
-		repo.SetCrawlError(ctx, input.CrawlID, fmt.Sprintf("Failed to create HTTP request: %v", err))
-		NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 		return fmt.Errorf("failed to create HTTP request: %w", err)
 	}
 	
@@ -82,8 +99,6 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Error("Failed to fetch URL", "error", err, "url", input.URL)
-		repo.SetCrawlError(ctx, input.CrawlID, fmt.Sprintf("Failed to fetch URL: %v", err))
-		NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 		return fmt.Errorf("failed to fetch URL: %w", err)
 	}
 	defer resp.Body.Close()
@@ -93,9 +108,6 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 	
 	if resp.StatusCode != http.StatusOK {
 		logger.Error("HTTP error response", "status_code", resp.StatusCode, "url", input.URL)
-		repo.SetCrawlError(ctx, input.CrawlID, fmt.Sprintf("HTTP error: %d", resp.StatusCode))
-		// Notify SSE that crawl failed
-		NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 		return fmt.Errorf("HTTP error: %d", resp.StatusCode)
 	}
 
@@ -105,28 +117,33 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 	doc, err := html.Parse(resp.Body)
 	if err != nil {
 		logger.Error("Failed to parse HTML", "error", err, "url", input.URL)
-		repo.SetCrawlError(ctx, input.CrawlID, fmt.Sprintf("Failed to parse HTML: %v", err))
-		// Notify SSE that crawl failed
-		NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 		return fmt.Errorf("failed to parse HTML: %w", err)
 	}
+	activity.RecordHeartbeat(ctx, "HTML parsing completed")
 
 	
 	
 	logger.Info("Extracting page metadata")
-	activity.RecordHeartbeat(ctx, "Extracting metadata")
+	activity.RecordHeartbeat(ctx, "Starting metadata extraction")
+	
 	// Extract HTML version
+	activity.RecordHeartbeat(ctx, "About to extract HTML version")
 	htmlVersion := utils.ExtractHtmlVersion(doc)
+	activity.RecordHeartbeat(ctx, "HTML version extraction completed")
 	logger.Info("HTML version extracted", "version", htmlVersion)
 	
 
 	// Extract page title
+	activity.RecordHeartbeat(ctx, "About to extract page title")
 	pageTitle := utils.SanitizeText(utils.ExtractTitle(doc), 500)
+	activity.RecordHeartbeat(ctx, "Page title extraction completed")
 	logger.Info("Page title extracted", "title", pageTitle)
 	
 
 	// Count headings
+	activity.RecordHeartbeat(ctx, "About to count headings")
 	headingCounts := utils.CountHeadings(doc)
+	activity.RecordHeartbeat(ctx, "Heading counting completed")
 	h1Count := int32(headingCounts["h1"])
 	h2Count := int32(headingCounts["h2"])
 	h3Count := int32(headingCounts["h3"])
@@ -138,34 +155,22 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 
 	// Count links
 	logger.Info("Analyzing links")
+	activity.RecordHeartbeat(ctx, "About to start link analysis")
 	linkAnalysis := utils.CountLinks(doc, input.URL)
+	activity.RecordHeartbeat(ctx, "Link analysis function completed")
 	linkCounts := linkAnalysis.Counts
 	internalLinksCount := int32(linkCounts["internal"])
 	externalLinksCount := int32(linkCounts["external"])
 	inaccessibleLinksCount := int32(linkCounts["inaccessible"])
+	activity.RecordHeartbeat(ctx, "Link counts processed")
 	logger.Info("Link analysis completed", "internal", internalLinksCount, "external", externalLinksCount, "inaccessible", inaccessibleLinksCount, "total_links", len(linkAnalysis.Links))
 	
-	for i, url := range linkAnalysis.Links {				
-		// Send heartbeat every 25 links to show activity is alive
-		if i%25 == 0 {
-			activity.RecordHeartbeat(ctx, fmt.Sprintf("Processing link %d/%d", i, len(linkAnalysis.Links)))
-		}
-		
-		// Sanitize anchor text to prevent encoding issues
-		sanitizedAnchorText := utils.SanitizeText(url.AnchorText, 1024)
-						
-		err := repo.CreateInaccessibleLink(ctx, input.CrawlID, url.Href, url.AbsoluteURL, url.IsInternal, *url.StatusCode, sanitizedAnchorText)
-		if err != nil {
-			logger.Error("Error saving link", "href", url.Href, "anchor", sanitizedAnchorText, "error", err)
-			log.Printf("Error saving link (href: %s, anchor: %s): %v", url.Href, sanitizedAnchorText, err)
-		}
-		
-		if i%50 == 0 && i > 0 {
-			logger.Info("Processed links", "completed", i, "total", len(linkAnalysis.Links))
-		}
-	}
+	// Skip individual link saving for now to avoid performance issues
+	// TODO: Implement efficient link checking in a separate background process
+	logger.Info("Skipping individual link saving to improve performance", "total_links", len(linkAnalysis.Links))
 
 	// Check for login form
+	activity.RecordHeartbeat(ctx, "Checking for login form")
 	hasLoginForm := utils.HasLoginForm(doc)
 	logger.Info("Login form analysis completed", "has_login_form", hasLoginForm)
 		
@@ -175,12 +180,11 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 
 	if err != nil {
 		logger.Error("Failed to update crawl result", "error", err, "crawl_id", input.CrawlID)
-		repo.SetCrawlError(ctx, input.CrawlID, fmt.Sprintf("Failed to update crawl result: %v", err))
-		// Notify SSE that crawl failed
-		NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 		return fmt.Errorf("failed to update crawl result: %w", err)
 	}
 
+	// Mark crawl as completed successfully
+	crawlCompleted = true
 	logger.Info("Crawl completed successfully", "crawl_id", input.CrawlID, "url", input.URL)
 	// Notify SSE that crawl completed successfully
 	NotifyCrawlUpdateHTTP(input.UserID, input.URLID)

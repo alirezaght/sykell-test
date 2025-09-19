@@ -1,33 +1,30 @@
 package main
 
 import (
-	"log"
-	"os"
 	"sykell-backend/internal/config"
 	"sykell-backend/internal/crawl"
+	"sykell-backend/internal/logger"
+
+	"go.uber.org/zap"
 )
 
 func main() {
-	// Get configuration from environment variables
-	temporalHostPort := os.Getenv("TEMPORAL_HOST_PORT")
-	if temporalHostPort == "" {
-		temporalHostPort = "localhost:7233"
-	}
-
-	temporalNamespace := os.Getenv("TEMPORAL_NAMESPACE")
-	if temporalNamespace == "" {
-		temporalNamespace = "default"
-	}
-
+	// Load configuration first
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("Failed to load configuration:", err)
+		panic("Failed to load configuration: " + err.Error())
 	}
 
-	log.Printf("Starting Temporal worker with config: %+v", cfg)
+	// Initialize logger
+	if err := logger.InitLogger(cfg.LogLevel, cfg.LogFormat, cfg.Environment); err != nil {
+		panic("Failed to initialize logger: " + err.Error())
+	}
+	defer logger.Sync()
+
+	logger.Info("Starting Temporal worker")
 	
 	// Start the worker
 	if err := crawl.StartWorker(cfg); err != nil {
-		log.Fatalf("Failed to start worker: %v", err)
+		logger.Fatal("Failed to start worker", zap.Error(err))
 	}
 }

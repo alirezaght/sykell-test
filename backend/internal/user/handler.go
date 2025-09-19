@@ -1,11 +1,12 @@
 package user
 
 import (
-	"log"
 	"net/http"
+	"sykell-backend/internal/logger"
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 )
 
 type UserHandler struct {
@@ -48,7 +49,7 @@ func (h *UserHandler) Login(c echo.Context) error {
 		Expires:  time.Unix(response.ExpiresAt, 0),
 	}
 	c.SetCookie(cookie)
-	log.Printf("Login: Set cookie for user, token length: %d", len(response.Token))
+	logger.Debug("Login cookie set", zap.Int("token_length", len(response.Token)))
 
 	return c.JSON(http.StatusOK, response)
 }

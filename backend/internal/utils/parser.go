@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -93,7 +92,7 @@ func CountLinks(doc *html.Node, baseURL string) LinkAnalysis {
 			"external":     0,
 			"inaccessible": 0,
 		},
-		Links:    []LinkInfo{},		
+		Links: []LinkInfo{},
 	}
 
 	baseU, err := url.Parse(baseURL)
@@ -123,31 +122,20 @@ func CountLinks(doc *html.Node, baseURL string) LinkAnalysis {
 				return
 			}
 			
-			// Check for inaccessible links first
-			if err := validateLinkURL(hrefValue); err != nil || strings.HasPrefix(hrefValue, "#") {
-				if !strings.HasPrefix(hrefValue, "#") {
-					result.Counts["inaccessible"]++
-					result.Links = append(result.Links, LinkInfo{
-						Href:        hrefValue,
-						AbsoluteURL: "",
-						IsInternal:  true,
-						AnchorText:  anchorText,
-						StatusCode:  nil,
-					})
-				}
+			// Skip fragment-only links
+			if strings.HasPrefix(hrefValue, "#") {
+				return
+			}
+			
+			// Skip javascript: and mailto: links
+			if strings.HasPrefix(strings.ToLower(hrefValue), "javascript:") || 
+			   strings.HasPrefix(strings.ToLower(hrefValue), "mailto:") ||
+			   strings.HasPrefix(strings.ToLower(hrefValue), "tel:") {
 				return
 			}
 
 			linkURL, err := url.Parse(hrefValue)
 			if err != nil {
-				result.Counts["inaccessible"]++
-				result.Links = append(result.Links, LinkInfo{
-					Href:        hrefValue,
-					AbsoluteURL: "",
-					IsInternal:  true,
-					AnchorText:  anchorText,
-					StatusCode:  nil,
-				})
 				return
 			}
 
@@ -156,29 +144,37 @@ func CountLinks(doc *html.Node, baseURL string) LinkAnalysis {
 				linkURL = baseU.ResolveReference(linkURL)
 			}
 
+			absoluteURL := linkURL.String()
+			
 			// Create LinkInfo
 			linkInfo := LinkInfo{
 				Href:        hrefValue,
-				AbsoluteURL: linkURL.String(),
+				AbsoluteURL: absoluteURL,
+				IsInternal:  linkURL.Host == baseU.Host,
 				AnchorText:  anchorText,
 			}
 
-			// Check status code for http/https URLs
-			if linkURL.Scheme == "http" || linkURL.Scheme == "https" {
-				statusCode := checkURLStatus(linkURL.String())
-				linkInfo.StatusCode = statusCode
-			}
-
-			// Categorize link
-			if linkURL.Host == baseU.Host {
-				linkInfo.IsInternal = true
+			// Check URL accessibility by making HTTP request
+			statusCode := checkURLStatus(absoluteURL)
+			linkInfo.StatusCode = statusCode
+			
+			// Categorize link based on status code
+			if statusCode == nil {
+				// Could not reach the URL at all
+				result.Counts["inaccessible"]++
+			} else if *statusCode >= 400 {
+				// 4xx or 5xx status codes are inaccessible
+				result.Counts["inaccessible"]++
+			} else if linkURL.Host == baseU.Host {
+				// Accessible internal link
 				result.Counts["internal"]++
-				result.Links = append(result.Links, linkInfo)
 			} else {
-				linkInfo.IsInternal = false
+				// Accessible external link
 				result.Counts["external"]++
-				result.Links = append(result.Links, linkInfo)
 			}
+			
+			// Add to links array
+			result.Links = append(result.Links, linkInfo)
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			countNodes(c)
@@ -207,7 +203,7 @@ func extractTextContent(n *html.Node) string {
 // checkURLStatus performs a HEAD request to check the status code of a URL
 func checkURLStatus(urlStr string) *int {
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: 15 * time.Second, // Increased timeout
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			// Allow up to 5 redirects
 			if len(via) >= 5 {
@@ -217,11 +213,24 @@ func checkURLStatus(urlStr string) *int {
 		},
 	}
 
+	// Set a reasonable User-Agent to avoid blocking
+	req, err := http.NewRequest("HEAD", urlStr, nil)
+	if err != nil {
+		return nil
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; SykellBot/1.0)")
+
 	// Try HEAD request first (faster)
-	resp, err := client.Head(urlStr)
+	resp, err := client.Do(req)
 	if err != nil {
 		// If HEAD fails, try GET request
-		resp, err = client.Get(urlStr)
+		getReq, err := http.NewRequest("GET", urlStr, nil)
+		if err != nil {
+			return nil
+		}
+		getReq.Header.Set("User-Agent", "Mozilla/5.0 (compatible; SykellBot/1.0)")
+		
+		resp, err = client.Do(getReq)
 		if err != nil {
 			// If both fail, return nil (unknown status)
 			return nil
@@ -230,26 +239,6 @@ func checkURLStatus(urlStr string) *int {
 	defer resp.Body.Close()
 
 	return &resp.StatusCode
-}// validateLinkURL checks if a URL is valid and accessible
-func validateLinkURL(rawURL string) error {
-	if rawURL == "" {
-		return fmt.Errorf("empty URL")
-	}
-	
-	// Skip fragment-only links
-	if strings.HasPrefix(rawURL, "#") {
-		return fmt.Errorf("fragment-only URL")
-	}
-	
-	// Skip javascript: and mailto: links
-	if strings.HasPrefix(strings.ToLower(rawURL), "javascript:") || 
-	   strings.HasPrefix(strings.ToLower(rawURL), "mailto:") {
-		return fmt.Errorf("non-http URL scheme")
-	}
-	
-	// Try to parse the URL
-	_, err := url.Parse(rawURL)
-	return err
 }
 
 // HasLoginForm checks if the HTML document contains a login form
