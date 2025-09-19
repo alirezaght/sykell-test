@@ -106,6 +106,7 @@ For detailed setup and development instructions, see:
 
 - **Backend Setup**: [backend/README.md](./backend/README.md)
 - **Frontend Setup**: [frontend/README.md](./frontend/README.md)
+- **E2E Tests**: [e2e/README.md](./e2e/README.md)
 
 ## Project Structure & Architecture
 
