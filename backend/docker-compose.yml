@@ -82,27 +82,32 @@ services:
       - sykell_network
 
   temporal-worker:
-    # Development worker with hot reload
     build:
       context: .
-      dockerfile: Dockerfile.worker
-      target: builder
-    volumes:
-      - ./backend:/app
-      - go_mod_cache:/go/pkg/mod
+      dockerfile: ./Dockerfile.worker
+    container_name: sykell_temporal_worker
+    restart: unless-stopped
     environment:
       ENVIRONMENT: development
       LOG_LEVEL: debug
       LOG_FORMAT: console
-    # Use air for hot reload
-    command: sh -c "go mod download && air -c .air-worker.toml"
+      DATABASE_URL: sykell_user:sykell_password@tcp(mysql:3306)/sykell_db?charset=utf8mb4&parseTime=True&loc=Local
+      TEMPORAL_HOST_PORT: temporal:7233
+      TEMPORAL_NAMESPACE: default
+      BACKEND_URL: "http://host.docker.internal:7070"
+    command: ["./worker"]
     depends_on:
-      temporal:
+      mysql:
         condition: service_healthy
+      temporal:
+        condition: service_healthy      
+    networks:
+      - sykell_network
 
 volumes:
   mysql_data:
     driver: local
+  go_mod_cache:
 
 networks:
   sykell_network:

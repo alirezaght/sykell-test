@@ -88,17 +88,43 @@ graph TB
    cd sykell
    ```
 
-2. **Start everything all in one**
-   ```bash
-   # for the first time to run the migrations and setup the db
-   docker compose --profile migration up migrate
+2. **Build the images**
+  ```bash
+  docker compose build
+  ```
 
+3. **Initialize the database (first run only)**
+   ```bash
+   # start MySQL and wait for healthcheck
+   docker compose up -d mysql
+
+   # run migrations in a one-shot container (profile-enabled)
+   docker compose --profile migration run --rm migrate
+   ```
+
+4. **Start the full stack**
+   ```bash
    docker compose up
    ```
 
-3. **Access the application**
+5. **Access the application**
    - http://localhost   
    
+### Troubleshooting
+
+- Network not found when running migrations:
+   ```
+   Error response from daemon: network <id> not found
+   ```
+   This usually comes from a stale `sykell_migrate` container referencing a removed network. Clean up and retry:
+   ```bash
+   # from the repository root
+   docker rm -f sykell_migrate 2>/dev/null || true
+   docker compose down -v
+   docker compose up -d mysql
+      docker compose --profile migration run --rm migrate
+   docker compose up
+   ```
 
 ## Detailed Setup Instructions
 

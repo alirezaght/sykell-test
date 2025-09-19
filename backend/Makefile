@@ -10,7 +10,7 @@ run: build
 
 # Run in development mode with hot reload (requires air)
 dev:
-	air
+	air -c .air.toml
 
 # Run tests
 test:
@@ -22,6 +22,7 @@ clean:
 
 # Docker commands
 docker-up:
+	docker-compose build
 	docker-compose up -d
 
 docker-down:

@@ -87,6 +87,35 @@ make run
 
 The API will be available at **http://localhost:7070**
 
+### Troubleshooting
+- Dev (Air) error: `no Go files in .../backend`
+    - Ensure you run commands from the `backend/` directory.
+    - We force Air to use `.air.toml` (builds `./cmd/main.go`). If you still see this, reinstall Air and try again:
+        ```bash
+        make install-tools
+        make dev
+        ```
+    - If a stale tmp binary path is referenced: remove `backend/tmp/` and retry.
+        ```bash
+        rm -rf tmp
+        make dev
+        ```
+- Container name conflict (`/sykell_mysql` already in use):
+   ```
+   Error response from daemon: Conflict. The container name "/sykell_mysql" is already in use
+   ```
+   The root stack and `backend/docker-compose.yml` both define a MySQL service named `sykell_mysql`. Don’t run both stacks at the same time. Fix it with one of these 
+
+   ```bash
+   # Stop the other stack, then start the one you need
+   # From repo root (if root stack is running)
+   docker compose down -v
+   # From backend/ (if backend stack is running)
+   docker compose down -v
+   
+   ```
+   
+
 ## Make Commands
 
 | Command | Description |

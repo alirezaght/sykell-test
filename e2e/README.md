@@ -82,12 +82,6 @@ npm test
 
 # Run with browser visible (headed mode)
 npm run test:headed
-
-# Run with Playwright UI (interactive mode)
-npm run test:ui
-
-# Run in debug mode (step-by-step debugging)
-npm run test:debug
 ```
 
 ## Available Commands
@@ -96,9 +90,6 @@ npm run test:debug
 |---------|-------------|
 | `npm test` | Run all tests in headless mode |
 | `npm run test:headed` | Run tests with browser visible |
-| `npm run test:ui` | Open Playwright UI for interactive testing |
-| `npm run test:debug` | Run tests in debug mode with step-by-step execution |
-| `npm run show-report` | Open the HTML test report |
 | `npm run install-browsers` | Install Playwright browser dependencies |
 
 ## Test Configuration

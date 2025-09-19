@@ -35,8 +35,6 @@ tmp_dir = "tmp"
   exclude_unchanged = false
   # Follow symlink for directories
   follow_symlink = false
-  # This log file places in your tmp_dir.
-  log = "errors.log"
   # Poll files for changes instead of using fsnotify.
   poll = false
   # Poll interval (defaults to the minimum interval of 500ms).

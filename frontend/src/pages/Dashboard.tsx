@@ -9,7 +9,7 @@ import { Pagination } from '../components/Pagination';
 import { AddUrlModal } from '../components/AddUrlModal';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
-const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 5;
 
 export const Dashboard: React.FC = () => {
   const { token } = useAuth();
