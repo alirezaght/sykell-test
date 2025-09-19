@@ -24,7 +24,7 @@ func setupMockDB(t *testing.T) (*sql.DB, sqlmock.Sqlmock, *UserService) {
 	}
 
 	service := &UserService{
-		db:     mockDB,
+		repo:     NewRepo(mockDB),
 		config: cfg,
 	}
 

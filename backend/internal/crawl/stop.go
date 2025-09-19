@@ -4,29 +4,21 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sykell-backend/internal/db"
 )
 
 // StopCrawl stops an active crawl for the specified URL by the user
 func (s *CrawlService) StopCrawl(ctx context.Context, userID string, urlID string) error {
 	log.Printf("StopCrawl called for userID: %s, urlID: %s", userID, urlID)
-	
-	
-	
-	queries := db.New(s.db)
-	
+				
 	// Verify that the URL belongs to the user
-	url, err := queries.GetUrlByIdAndUserId(ctx, db.GetUrlByIdAndUserIdParams{
-		ID:   urlID,
-		UserID: userID,
-	})
+	url, err := s.repo.GetUrlByIdAndUserId(ctx, urlID, userID)
 	if err != nil {
 		log.Printf("Error getting URL by ID and user ID: %v", err)
 		return err
 	}
 	log.Printf("Found URL: %s", url.NormalizedUrl)
 	
-	activeCrawls, err := queries.GetActiveCrawlsForUrlId(ctx, url.ID)
+	activeCrawls, err := s.repo.GetActiveCrawlsForUrlId(ctx, url.ID)
 
 	if err != nil {
 		log.Printf("Error getting active crawls: %v", err)
@@ -38,7 +30,7 @@ func (s *CrawlService) StopCrawl(ctx context.Context, userID string, urlID strin
 	for _, crawl := range activeCrawls {
 		log.Printf("Stopping crawl ID: %s, workflow ID: %s", crawl.ID, crawl.WorkflowID)
 
-		err = queries.SetCrawlStopped(ctx, crawl.ID)
+		err = s.repo.SetCrawlStopped(ctx, crawl.ID)
 		if err != nil {
 			log.Printf("Error updating crawl status: %v", err)
 			return fmt.Errorf("failed to update crawl status: %w", err)
@@ -46,7 +38,7 @@ func (s *CrawlService) StopCrawl(ctx context.Context, userID string, urlID strin
 		log.Printf("Successfully updated crawl status to stopped for crawl ID: %s", crawl.ID)
 
 		// Signal the workflow to stop		
-		err = s.temporalClient.CancelWorkflow(ctx, crawl.WorkflowID, "")
+		err = s.temporalService.GetTemporalClient().CancelWorkflow(ctx, crawl.WorkflowID, "")
 		if err != nil {
 			log.Printf("Error canceling workflow: %v", err)
 			return fmt.Errorf("failed to cancel workflow: %w", err)

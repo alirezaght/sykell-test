@@ -181,18 +181,13 @@ func TestUserService_Register(t *testing.T) {
 
 			tt.setupMock(mock)
 
-			result, err := service.Register(context.Background(), tt.request)
+			err := service.Register(context.Background(), tt.request)
 
 			if tt.expectedError != "" {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedError)
-				assert.Nil(t, result)
 			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, result)
-				if tt.validateResult != nil {
-					tt.validateResult(t, result)
-				}
+				assert.NoError(t, err)				
 			}
 
 			assert.NoError(t, mock.ExpectationsWereMet())
@@ -229,9 +224,8 @@ func TestUserService_Register_PasswordHashing(t *testing.T) {
 	}
 
 	// Register user
-	result, err := service.Register(context.Background(), request)
+	err := service.Register(context.Background(), request)
 	require.NoError(t, err)
-	require.NotNil(t, result)
 
 	// Verify the password would be hashed correctly
 	hashedPassword, err := utils.HashPassword(password)
@@ -264,9 +258,8 @@ func TestUserService_Register_ContextCancellation(t *testing.T) {
 
 	// With cancelled context, the query may not execute at all
 	// so we shouldn't expect any database interactions
-	result, err := service.Register(ctx, request)
+	err := service.Register(ctx, request)
 	assert.Error(t, err)
-	assert.Nil(t, result)
 	// The exact error message may vary depending on where cancellation occurs
 
 	// Don't check mock expectations as the context cancellation
@@ -294,9 +287,8 @@ func TestUserService_Register_UniqueEmails(t *testing.T) {
 		Password: "password123",
 	}
 
-	result1, err1 := service.Register(context.Background(), request1)
+	err1 := service.Register(context.Background(), request1)
 	assert.NoError(t, err1)
-	assert.NotNil(t, result1)
 
 	// Second registration with same email should fail
 	user := db.User{
@@ -319,10 +311,9 @@ func TestUserService_Register_UniqueEmails(t *testing.T) {
 		Password: "differentpassword",
 	}
 
-	result2, err2 := service.Register(context.Background(), request2)
+	err2 := service.Register(context.Background(), request2)
 	assert.Error(t, err2)
 	assert.Contains(t, err2.Error(), "user already exists")
-	assert.Nil(t, result2)
 
 	assert.NoError(t, mock.ExpectationsWereMet())
 }

@@ -170,7 +170,7 @@ func TestGenerateJWT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			token, expiresAt, err := GenerateJWT(tt.user, tt.jwtSecret)
+			token, expiresAt, err := GenerateJWT(tt.user.ID, tt.user.Email, tt.jwtSecret)
 			
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -201,11 +201,11 @@ func TestValidateJWT(t *testing.T) {
 	}
 	
 	// Generate a valid token for testing
-	validToken, _, err := GenerateJWT(user, jwtSecret)
+	validToken, _, err := GenerateJWT(user.ID, user.Email, jwtSecret)
 	require.NoError(t, err)
 	
 	// Generate a token with different secret
-	wrongSecretToken, _, err := GenerateJWT(user, []byte("wrong-secret"))
+	wrongSecretToken, _, err := GenerateJWT(user.ID, user.Email, []byte("wrong-secret"))
 	require.NoError(t, err)
 	
 	// Generate an expired token
@@ -310,7 +310,7 @@ func TestJWTRoundTrip(t *testing.T) {
 	}
 
 	// Generate token
-	token, expiresAt, err := GenerateJWT(user, jwtSecret)
+	token, expiresAt, err := GenerateJWT(user.ID, user.Email, jwtSecret)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	require.Greater(t, expiresAt, time.Now().Unix())

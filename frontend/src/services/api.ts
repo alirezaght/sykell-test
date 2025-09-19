@@ -8,11 +8,25 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Include cookies in requests
+  withCredentials: true, // Include cookies in requests (needed for stream endpoint)
 });
 
-// Using cookie-based authentication - no need to manually add tokens
-// Cookies are automatically included with withCredentials: true
+// Add token to Authorization header for all requests except stream endpoint
+api.interceptors.request.use(
+  (config) => {
+    // Don't add Authorization header for stream endpoint (it uses cookies)
+    if (!config.url?.includes('/crawl/stream')) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // Handle auth errors globally
 api.interceptors.response.use(

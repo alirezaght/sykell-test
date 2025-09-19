@@ -2,12 +2,10 @@ package url
 
 import (
 	"context"
-	"sykell-backend/internal/db"
 )
 
 // FindUrls retrieves URLs based on the provided dashboard filters
 func (s *Service) FindUrls(ctx context.Context, userID string, filters DashboardFilters) (PaginatedUrls, error) {
-	queries := db.New(s.db)
 	
 	// Map frontend sort column names to backend column names
 	sortBy := mapSortColumn(filters.SortBy)
@@ -16,30 +14,16 @@ func (s *Service) FindUrls(ctx context.Context, userID string, filters Dashboard
 		sortDir = "desc"
 	}
 	
-	result, err := queries.GetUrlsWithLatestCrawlsFiltered(ctx, db.GetUrlsWithLatestCrawlsFilteredParams{
-		UserID:      userID,
-		QueryFilter: filters.Query,
-		SortBy:      sortBy,
-		SortDir:     sortDir,
-		Limit:       max(filters.Limit, 1),
-		Offset:      max(filters.Limit * (filters.Page - 1), 0),
-	})
+	crawlResults, err := s.repo.GetUrlsWithLatestCrawlsFiltered(ctx, userID, max(filters.Limit, 1), max(filters.Limit * (filters.Page - 1), 0), sortBy, sortDir, filters.Query)
+	
 	if err != nil {
 		return PaginatedUrls{}, err
 	}
-	totalCount, err := queries.CountUrlsWithFilter(ctx, db.CountUrlsWithFilterParams{
-		UserID:     userID,
-		QueryFilter: filters.Query,
-	})
+	totalCount, err := s.repo.CountURLsByUserID(ctx, userID)
 	if err != nil {
 		return PaginatedUrls{}, err
 	}
 
-	// Convert database rows to frontend-friendly format
-	crawlResults := make([]CrawlResult, len(result))
-	for i, row := range result {
-		crawlResults[i] = convertDbRowToCrawlResult(row)
-	}
 
 	return PaginatedUrls{
 		Total: totalCount,

@@ -1,7 +1,6 @@
 package url
 
 import (
-	"sykell-backend/internal/db"
 	"time"
 )
 
@@ -55,87 +54,4 @@ type AddRequest struct {
 	URL string `json:"url" validate:"required,url"`
 }
 
-// convertDbRowToCrawlResult converts a database row to a CrawlResult
-func convertDbRowToCrawlResult(row db.GetUrlsWithLatestCrawlsFilteredRow) CrawlResult {
-	result := CrawlResult{
-		UrlID:         row.UrlID,
-		NormalizedUrl: row.NormalizedUrl,
-		Domain:        row.Domain,
-	}
 
-	// Convert nullable time
-	if row.UrlCreatedAt.Valid {
-		result.UrlCreatedAt = &row.UrlCreatedAt.Time
-	}
-
-	// Convert nullable strings
-	if row.CrawlID.Valid {
-		result.CrawlID = &row.CrawlID.String
-	}
-	if row.Status.Valid {
-		statusStr := string(row.Status.CrawlsStatus)
-		result.Status = &statusStr
-	}
-	if row.HtmlVersion.Valid {
-		result.HtmlVersion = &row.HtmlVersion.String
-	}
-	if row.PageTitle.Valid {
-		result.PageTitle = &row.PageTitle.String
-	}
-	if row.ErrorMessage.Valid {
-		result.ErrorMessage = &row.ErrorMessage.String
-	}
-
-	// Convert nullable times
-	if row.QueuedAt.Valid {
-		result.QueuedAt = &row.QueuedAt.Time
-	}
-	if row.StartedAt.Valid {
-		result.StartedAt = &row.StartedAt.Time
-	}
-	if row.FinishedAt.Valid {
-		result.FinishedAt = &row.FinishedAt.Time
-	}
-	if row.CrawlCreatedAt.Valid {
-		result.CrawlCreatedAt = &row.CrawlCreatedAt.Time
-	}
-	if row.CrawlUpdatedAt.Valid {
-		result.CrawlUpdatedAt = &row.CrawlUpdatedAt.Time
-	}
-
-	// Convert nullable integers
-	if row.H1Count.Valid {
-		result.H1Count = &row.H1Count.Int32
-	}
-	if row.H2Count.Valid {
-		result.H2Count = &row.H2Count.Int32
-	}
-	if row.H3Count.Valid {
-		result.H3Count = &row.H3Count.Int32
-	}
-	if row.H4Count.Valid {
-		result.H4Count = &row.H4Count.Int32
-	}
-	if row.H5Count.Valid {
-		result.H5Count = &row.H5Count.Int32
-	}
-	if row.H6Count.Valid {
-		result.H6Count = &row.H6Count.Int32
-	}
-	if row.InternalLinksCount.Valid {
-		result.InternalLinksCount = &row.InternalLinksCount.Int32
-	}
-	if row.ExternalLinksCount.Valid {
-		result.ExternalLinksCount = &row.ExternalLinksCount.Int32
-	}
-	if row.InaccessibleLinksCount.Valid {
-		result.InaccessibleLinksCount = &row.InaccessibleLinksCount.Int32
-	}
-
-	// Convert nullable bool
-	if row.HasLoginForm.Valid {
-		result.HasLoginForm = &row.HasLoginForm.Bool
-	}
-
-	return result
-}

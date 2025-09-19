@@ -4,18 +4,17 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
-	"time"
 
 	"sykell-backend/internal/config"
 	"sykell-backend/internal/crawl"
 	sykellMiddleware "sykell-backend/internal/middleware"
+	"sykell-backend/internal/temporal"
 	"sykell-backend/internal/url"
 	"sykell-backend/internal/user"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"go.temporal.io/sdk/client"
 )
 
 func main() {
@@ -39,38 +38,24 @@ func main() {
 	log.Println("Database connected successfully")
 
 	// Initialize services
-	userService := user.NewUserService(db, cfg)
+	userRepo := user.NewRepo(db)
+	userService := user.NewUserService(userRepo, cfg)
 	userHandler := user.NewUserHandler(userService)
 
 	// Initialize Temporal client with better connection settings
-	log.Printf("Connecting to Temporal server at %s", cfg.TemporalHostPort)
-	temporalClient, err := client.Dial(client.Options{
-		HostPort:  cfg.TemporalHostPort,
-		Namespace: cfg.Namespace,
-		ConnectionOptions: client.ConnectionOptions{
-			TLS: nil, // Disable TLS for local development
-			KeepAliveTime:   10 * time.Second, // seconds
-			KeepAliveTimeout: 20 * time.Second, // seconds						
-		},
-	})
-	if err != nil {
-		log.Printf("Failed to create Temporal client: %v", err)
-		log.Printf("Make sure Temporal server is running with: docker compose up -d")
-		log.Printf("Temporal connection required for crawling functionality")		
-	} else {
-		log.Printf("Successfully connected to Temporal server")
-	}
+	temporalService := temporal.NewService(cfg)
+	temporalService.Setup()
 	
-	// Ensure proper cleanup on shutdown
-	if temporalClient != nil {
-		defer temporalClient.Close()
-	}
+	// Ensure proper cleanup on shutdown	
+	defer temporalService.Close()	
 
 	// Initialize Temporal service
-	urlService := url.NewService(db, cfg)
+	urlRepo := url.NewRepo(db)
+	urlService := url.NewService(urlRepo, cfg)
 	urlHandler := url.NewHandler(urlService)
 
-	crawlService := crawl.NewCrawlService(db, cfg, temporalClient)
+	crawlRepo := crawl.NewRepo(db)
+	crawlService := crawl.NewCrawlService(crawlRepo, cfg, temporalService)
 	crawlHandler := crawl.NewCrawlHandler(crawlService)
 	
 	
@@ -114,12 +99,6 @@ func main() {
 	// API routes
 	api := e.Group("/api/v1")
 	
-	// Test routes for debugging
-	api.GET("/test", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{
-			"message": "API is working",
-		})
-	})
 
 	// Auth routes (public)
 	api.POST("/auth/register", userHandler.Register)
@@ -127,8 +106,8 @@ func main() {
 	api.POST("/auth/logout", userHandler.Logout)	
 		
 	
-	// Protected routes (require JWT)
-	protected := api.Group("", sykellMiddleware.JWTMiddleware([]byte(cfg.JWTSecret)))
+	// Protected routes (require JWT from Authorization header)
+	protected := api.Group("", sykellMiddleware.JWTMiddleware([]byte(cfg.JWTSecret), false))
 	// Profile route
 	protected.GET("/auth/me", userHandler.GetProfile)
 	
@@ -142,7 +121,10 @@ func main() {
 	log.Printf("Registering crawl routes...")
 	protected.POST("/crawl/start/:id", crawlHandler.StartCrawl)
 	protected.POST("/crawl/stop/:id", crawlHandler.StopCrawl)
-	protected.GET("/crawl/stream", crawlHandler.StreamCrawlUpdates)
+	
+	// Stream endpoint with cookie-based authentication
+	streamProtected := api.Group("", sykellMiddleware.JWTMiddleware([]byte(cfg.JWTSecret), true))
+	streamProtected.GET("/crawl/stream", crawlHandler.StreamCrawlUpdates)
 		
 	// Internal notification endpoint for Temporal worker to trigger SSE notifications
 	api.POST("/internal/notify-crawl-update", crawlHandler.NotifyCrawlUpdate)

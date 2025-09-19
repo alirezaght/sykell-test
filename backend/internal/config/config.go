@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -14,6 +15,8 @@ type Config struct {
 	TemporalHostPort string
 	Namespace		string
 }
+
+const DefaultTimeout = 5 * time.Second
 
 func Load() (*Config, error) {
 	// Load .env file if it exists

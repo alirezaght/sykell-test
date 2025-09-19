@@ -4,15 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"sykell-backend/internal/db"
 	"sykell-backend/internal/utils"
 )
 
 // Login authenticates a user and returns a JWT token
 func (s *UserService) Login(ctx context.Context, req LoginRequest) (*LoginResponse, error) {
-	// Get user by email
-	queries := db.New(s.db)
-	user, err := queries.GetUserByEmail(ctx, req.Email)
+	// Get user by email	
+	user, err := s.repo.GetByEmail(ctx, req.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errors.New("invalid email or password")
@@ -26,17 +24,16 @@ func (s *UserService) Login(ctx context.Context, req LoginRequest) (*LoginRespon
 	}
 
 	// Generate JWT token
-	token, expiresAt, err := utils.GenerateJWT(user, []byte(s.config.JWTSecret))
+	token, expiresAt, err := utils.GenerateJWT(user.ID, user.Email, []byte(s.config.JWTSecret))
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert to response format with proper date handling
-	userResponse := ToUserResponse(user)
+	user.PasswordHash = "" // Clear password hash before sending response
 
 	return &LoginResponse{
 		Token:     token,
-		User:      userResponse,
+		User:      user,
 		ExpiresAt: expiresAt,
 	}, nil
 }

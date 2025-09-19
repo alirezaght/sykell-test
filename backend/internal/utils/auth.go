@@ -3,9 +3,6 @@ package utils
 import (
 	"errors"
 	"time"
-
-	"sykell-backend/internal/db"
-
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -31,18 +28,18 @@ func CheckPassword(hashedPassword, password string) error {
 }
 
 // GenerateJWT generates a JWT token for a user
-func GenerateJWT(user db.User, jwtSecret []byte) (string, int64, error) {
+func GenerateJWT(id string, email string, jwtSecret []byte) (string, int64, error) {
 	expirationTime := time.Now().Add(24 * time.Hour) // Token expires in 24 hours
 	
 	claims := &JWTClaims{
-		UserID: user.ID,
-		Email:  user.Email,
+		UserID: id,
+		Email:  email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			Issuer:    "sykell-backend",
-			Subject:   user.Email,
+			Subject:   email,
 		},
 	}
 

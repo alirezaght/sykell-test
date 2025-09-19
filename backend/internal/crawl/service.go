@@ -1,24 +1,23 @@
 package crawl
 
 import (
-	"database/sql"
 	"sykell-backend/internal/config"
-	"go.temporal.io/sdk/client"
+	"sykell-backend/internal/temporal"
 )
 
 // CrawlService provides crawl-related services
 type CrawlService struct {
-	db *sql.DB
+	repo Repo
 	config *config.Config
-	temporalClient client.Client
+	temporalService *temporal.Service
 }
 
 
 // NewCrawlService creates a new CrawlService
-func NewCrawlService(database *sql.DB, config *config.Config, temporalClient client.Client) *CrawlService {
+func NewCrawlService(repo Repo, config *config.Config, temporalService *temporal.Service) *CrawlService {
 	return &CrawlService{
-		db: database,
+		repo: repo,
 		config: config,
-		temporalClient: temporalClient,
+		temporalService: temporalService,
 	}
 }

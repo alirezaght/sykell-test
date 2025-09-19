@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-	"sykell-backend/internal/db"
 )
 
 
@@ -55,12 +54,7 @@ func (s *Service) AddURL(ctx context.Context, userID string, request AddRequest)
 	normalizeURL, domain, err := normalizeURL(request.URL)
 	if err != nil {
 		return err
-	}
-	queries := db.New(s.db)
-	_, err = queries.CreateUrl(ctx, db.CreateUrlParams{
-		UserID: userID,
-		NormalizedUrl: normalizeURL,
-		Domain: domain,		
-	})
+	}	
+	err = s.repo.CreateURL(ctx, userID, normalizeURL, domain)
 	return err
 }

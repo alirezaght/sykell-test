@@ -1,7 +1,6 @@
 package user
 
 import (
-	"sykell-backend/internal/db"
 	"time"
 )
 
@@ -17,6 +16,7 @@ type UserResponse struct {
 	Email     string     `json:"email"`
 	CreatedAt *time.Time `json:"created_at"`
 	UpdatedAt *time.Time `json:"updated_at"`
+	PasswordHash string     `json:"password_hash"`
 }
 
 // LoginResponse represents the login response
@@ -32,22 +32,3 @@ type RegisterRequest struct {
 	Password string `json:"password" validate:"required,min=6"`
 }
 
-// ToUserResponse converts a db.User to UserResponse, handling sql.NullTime properly
-func ToUserResponse(user db.User) UserResponse {
-	resp := UserResponse{
-		ID:    user.ID,
-		Email: user.Email,
-	}
-	
-	// Handle created_at
-	if user.CreatedAt.Valid {
-		resp.CreatedAt = &user.CreatedAt.Time
-	}
-	
-	// Handle updated_at
-	if user.UpdatedAt.Valid {
-		resp.UpdatedAt = &user.UpdatedAt.Time
-	}
-	
-	return resp
-}

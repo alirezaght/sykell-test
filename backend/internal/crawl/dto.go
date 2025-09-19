@@ -26,3 +26,13 @@ type SSENotification struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+type URLResponse struct {
+	ID string `json:"id"`
+	Domain string `json:"domain"`
+	NormalizedUrl string `json:"normalized_url"`
+}
+
+type CrawlResponse struct {
+	ID string `json:"id"`
+	WorkflowID string `json:"workflow_id"`	
+}

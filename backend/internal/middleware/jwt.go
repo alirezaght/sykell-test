@@ -10,42 +10,43 @@ import (
 )
 
 // JWTMiddleware creates a middleware function for JWT authentication
-func JWTMiddleware(jwtSecret []byte) echo.MiddlewareFunc {
+func JWTMiddleware(jwtSecret []byte, fromCookie bool) echo.MiddlewareFunc {
 	
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			var token string
 			
 			// Debug logging
-			log.Printf("JWT Middleware - Path: %s", c.Request().URL.Path)
+			log.Printf("JWT Middleware - Path: %s, fromCookie: %t", c.Request().URL.Path, fromCookie)
 			
-			// First try to get from cookie (preferred method)
-			cookie, err := c.Cookie("token")
-			if err == nil && cookie.Value != "" {
-				token = cookie.Value
-				log.Printf("JWT Middleware - Using cookie token")
+			if fromCookie {
+				// Only check cookie
+				cookie, err := c.Cookie("token")
+				if err == nil && cookie.Value != "" {
+					token = cookie.Value
+					log.Printf("JWT Middleware - Using cookie token")
+				}
+				
+				if token == "" {
+					return c.JSON(http.StatusUnauthorized, map[string]string{
+						"error": "Missing token cookie",
+					})
+				}
 			} else {
-				// Try Authorization header as fallback
+				// Only check Authorization header
 				authHeader := c.Request().Header.Get("Authorization")
 				log.Printf("JWT Middleware - Authorization header: %s", authHeader)
 				
 				if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
 					token = strings.TrimPrefix(authHeader, "Bearer ")
 					log.Printf("JWT Middleware - Using Bearer token")
-				} else {
-					// Try query parameter as last resort
-					queryToken := c.QueryParam("token")
-					if queryToken != "" {
-						token = queryToken
-						log.Printf("JWT Middleware - Using query parameter token")
-					}
 				}
-			}
-
-			if token == "" {								
-				return c.JSON(http.StatusUnauthorized, map[string]string{
-					"error": "Missing authorization header, token query parameter, or token cookie",
-				})
+				
+				if token == "" {
+					return c.JSON(http.StatusUnauthorized, map[string]string{
+						"error": "Missing or invalid Authorization header",
+					})
+				}
 			}
 
 			// Validate the token

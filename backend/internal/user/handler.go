@@ -64,7 +64,7 @@ func (h *UserHandler) Register(c echo.Context) error {
 	}
 
 	ctx := c.Request().Context()
-	_, err := h.userService.Register(ctx, req)
+	err := h.userService.Register(ctx, req)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": err.Error(),

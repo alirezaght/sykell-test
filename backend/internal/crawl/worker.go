@@ -13,10 +13,12 @@ import (
 
 func CrawlWorkflow(ctx workflow.Context, input WorlFlowInput) error {
 	logger := workflow.GetLogger(ctx)
-	logger.Info("Starting crawl workflow", "url", input.URL)
+	logger.Info("Starting crawl workflow", "url", input.URL, "crawl_id", input.CrawlID, "user_id", input.UserID)
 
 	activityOptions := workflow.ActivityOptions{
-		StartToCloseTimeout: 5 * time.Minute,
+		StartToCloseTimeout: 10 * time.Minute, // Increased timeout for slow websites
+		ScheduleToCloseTimeout: 15 * time.Minute, // Overall timeout including retries
+		HeartbeatTimeout: 30 * time.Second, // Add heartbeat for long-running activities
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval:    time.Second,
 			BackoffCoefficient: 2.0,
@@ -27,13 +29,14 @@ func CrawlWorkflow(ctx workflow.Context, input WorlFlowInput) error {
 	
 	ctx = workflow.WithActivityOptions(ctx, activityOptions)
 	
+	logger.Info("Executing crawl activity", "url", input.URL, "crawl_id", input.CrawlID)
 	err := workflow.ExecuteActivity(ctx, CrawlURLActivity, input).Get(ctx, nil)
 	if err != nil {
-		logger.Error("Crawl workflow failed", "error", err)
+		logger.Error("Crawl workflow failed", "error", err, "url", input.URL, "crawl_id", input.CrawlID)
 		return err
 	}
 
-	logger.Info("Crawl workflow completed successfully")
+	logger.Info("Crawl workflow completed successfully", "url", input.URL, "crawl_id", input.CrawlID)
 	return nil
 }
 

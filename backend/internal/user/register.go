@@ -4,35 +4,30 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"sykell-backend/internal/db"
 	"sykell-backend/internal/utils"
 )
 
 // Register registers a new user
-func (s *UserService) Register(ctx context.Context, req RegisterRequest) (sql.Result, error) {
+func (s *UserService) Register(ctx context.Context, req RegisterRequest) error {
 	// Check if user already exists
-	queries := db.New(s.db)
-	_, err := queries.GetUserByEmail(ctx, req.Email)
+	_, err := s.repo.GetByEmail(ctx, req.Email)
 	if err == nil {
-		return nil, errors.New("user already exists")
+		return errors.New("user already exists")
 	}
 	if err != sql.ErrNoRows {
-		return nil, err
+		return err
 	}
 
 	// Create the user
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	
-	result, err := queries.CreateUser(ctx, db.CreateUserParams{
-		Email:        req.Email,
-		PasswordHash: hashedPassword,
-	})
+	err = s.repo.Create(ctx, req.Email, hashedPassword)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return result, nil
+	return nil
 }
