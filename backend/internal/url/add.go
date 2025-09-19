@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-
+// normalizeURL normalizes the given raw URL string and extracts the domain
 func normalizeURL(raw string) (string, string, error) {
 	// Parse
 	u, err := url.Parse(raw)

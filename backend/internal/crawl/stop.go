@@ -36,16 +36,15 @@ func (s *CrawlService) StopCrawl(ctx context.Context, userID string, urlID strin
 			zap.String("crawl_id", crawl.ID), 
 			zap.String("workflow_id", crawl.WorkflowID))
 
-		err = s.repo.SetCrawlStopped(ctx, crawl.ID)
-		if err != nil {
+		if err = s.repo.SetCrawlStopped(ctx, crawl.ID); err != nil {
 			logger.Error("Error updating crawl status", zap.Error(err))
 			return fmt.Errorf("failed to update crawl status: %w", err)
 		}
+		
 		logger.Info("Successfully updated crawl status to stopped", zap.String("crawl_id", crawl.ID))
 
 		// Signal the workflow to stop		
-		err = s.temporalService.GetTemporalClient().CancelWorkflow(ctx, crawl.WorkflowID, "")
-		if err != nil {
+		if err = s.temporalService.GetTemporalClient().CancelWorkflow(ctx, crawl.WorkflowID, ""); err != nil {		
 			logger.Error("Error canceling workflow", zap.Error(err))
 			return fmt.Errorf("failed to cancel workflow: %w", err)
 		}

@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// UserHandler handles HTTP requests related to user operations
 type UserHandler struct {
 	userService *UserService
 }

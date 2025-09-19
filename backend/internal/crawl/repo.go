@@ -7,7 +7,7 @@ import (
 	"sykell-backend/internal/db"
 )
 
-
+// Repo defines the interface for crawl repository operations
 type Repo interface {
 	GetCrawlIDByWorkflowID(ctx context.Context, workflowID string) (string, error)
 	QueueCrawl(ctx context.Context, urlID string, workflowID string) error
@@ -21,17 +21,19 @@ type Repo interface {
 	GetActiveCrawlsForUrlId(ctx context.Context, urlID string) ([]CrawlResponse, error) 
 }
 
+// crawlRepo is the concrete implementation of the Repo interface
 type crawlRepo struct {
 	sqlDB *sql.DB
 }
 
+// NewRepo creates a new instance of crawlRepo
 func NewRepo(db *sql.DB) Repo {
 	return &crawlRepo{
 		sqlDB: db,
 	}
 }
 
-
+// GetCrawlIDByWorkflowID retrieves the crawl ID associated with the given workflow ID
 func (r *crawlRepo) GetCrawlIDByWorkflowID(ctx context.Context, workflowID string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()
@@ -43,6 +45,7 @@ func (r *crawlRepo) GetCrawlIDByWorkflowID(ctx context.Context, workflowID strin
 	return crawl.ID, nil
 }
 
+// QueueCrawl adds a new crawl to the queue for the specified URL and workflow ID
 func (r *crawlRepo) QueueCrawl(ctx context.Context, urlID string, workflowID string) error {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()
@@ -54,6 +57,7 @@ func (r *crawlRepo) QueueCrawl(ctx context.Context, urlID string, workflowID str
 	return err
 }
 
+// CountOfActiveCrawlForUrlId returns the count of active crawls for the specified URL ID
 func (r *crawlRepo) CountOfActiveCrawlForUrlId(ctx context.Context, urlID string) (int64, error) {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()
@@ -65,6 +69,7 @@ func (r *crawlRepo) CountOfActiveCrawlForUrlId(ctx context.Context, urlID string
 	return count, nil
 }
 
+// GetUrlByIdAndUserId retrieves a URL by its ID and associated user ID
 func (r *crawlRepo) GetUrlByIdAndUserId(ctx context.Context, urlID string, userID string) (*URLResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()
@@ -83,6 +88,7 @@ func (r *crawlRepo) GetUrlByIdAndUserId(ctx context.Context, urlID string, userI
 	}, nil
 }
 
+// UpdateCrawlResult updates the results of a crawl with the provided metrics
 func (r *crawlRepo) UpdateCrawlResult(ctx context.Context, crawlID string, htmlVersion string, pageTitle string, h1Count int32, h2Count int32, h3Count int32, h4Count int32, h5Count int32, h6Count int32, internalLinksCount int32, externalLinksCount int32, inaccessableLinksCount int32, hasLoginForm bool, status string) error {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()
@@ -106,6 +112,7 @@ func (r *crawlRepo) UpdateCrawlResult(ctx context.Context, crawlID string, htmlV
 	return err
 }
 
+// CreateInaccessibleLink creates a new record for an inaccessible link found during a crawl
 func (r *crawlRepo) CreateInaccessibleLink(ctx context.Context, crawlID string, href string, absoluteURL string, isInternal bool, statusCode int, anchorText string) error {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()
@@ -121,6 +128,7 @@ func (r *crawlRepo) CreateInaccessibleLink(ctx context.Context, crawlID string, 
 	return err
 }
 
+// SetCrawlError sets the error message for a crawl that encountered an error
 func (r *crawlRepo) SetCrawlError(ctx context.Context, crawlID string, errorMessage string) error {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()
@@ -132,6 +140,7 @@ func (r *crawlRepo) SetCrawlError(ctx context.Context, crawlID string, errorMess
 	return err
 }
 
+// SetCrawlRunning updates the status of a crawl to "running"
 func (r *crawlRepo) SetCrawlRunning(ctx context.Context, crawlID string) error {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()
@@ -140,6 +149,7 @@ func (r *crawlRepo) SetCrawlRunning(ctx context.Context, crawlID string) error {
 	return err
 }
 
+// SetCrawlStopped updates the status of a crawl to "stopped"
 func (r *crawlRepo) SetCrawlStopped(ctx context.Context, crawlID string) error {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()
@@ -148,6 +158,7 @@ func (r *crawlRepo) SetCrawlStopped(ctx context.Context, crawlID string) error {
 	return err
 }
 
+// GetActiveCrawlsForUrlId retrieves all active crawls for the specified URL ID
 func (r *crawlRepo) GetActiveCrawlsForUrlId(ctx context.Context, urlID string) ([]CrawlResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()

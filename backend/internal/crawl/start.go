@@ -27,11 +27,9 @@ func (s *CrawlService) StartCrawl(ctx context.Context, userID string, urlID stri
 	}
 	// Enqueue the crawl task
 	workflowID := "crawl_" + url.ID + "_" + uuid.New().String()
-	err = s.repo.QueueCrawl(ctx, urlID, workflowID)
-
-	if err != nil {
+	if err = s.repo.QueueCrawl(ctx, urlID, workflowID); err != nil {
 		return err
-	}
+	}	
 
 	crawlID, err := s.repo.GetCrawlIDByWorkflowID(ctx, workflowID)
 	if err != nil {
@@ -43,11 +41,10 @@ func (s *CrawlService) StartCrawl(ctx context.Context, userID string, urlID stri
 		TaskQueue: TaskQueueName,
 		WorkflowExecutionTimeout: 10 * time.Minute, // Set explicit workflow timeout
 		WorkflowTaskTimeout:      time.Minute,      // Set workflow task timeout		
-		StartDelay: 3 * time.Second,
+		StartDelay: 3 * time.Second, // Small delay to ensure the sse connection is ready
 	}
 	
-	// Start the workflow
-	
+	// Start the workflow	
 	_, err = s.temporalService.GetTemporalClient().ExecuteWorkflow(ctx, workflowOptions, WorkflowName, WorlFlowInput{
 		URLID: url.ID,
 		UserID: userID,

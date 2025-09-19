@@ -19,7 +19,7 @@ func (s *Service) FindUrls(ctx context.Context, userID string, filters Dashboard
 	if err != nil {
 		return PaginatedUrls{}, err
 	}
-	totalCount, err := s.repo.CountURLsByUserID(ctx, userID)
+	totalCount, err := s.repo.CountURLsByFilter(ctx, userID, filters.Query)
 	if err != nil {
 		return PaginatedUrls{}, err
 	}

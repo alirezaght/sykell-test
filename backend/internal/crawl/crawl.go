@@ -15,7 +15,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-// CrawlURLActivity performs the actual URL crawling and metadata extraction
+// CrawlURLActivity performs the actual URL crawling and metadata extraction, it runs in the Temporal worker process
 func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 	// Get the activity logger for proper Temporal logging
 	logger := activity.GetLogger(ctx)
@@ -44,8 +44,12 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 
 	repo := NewRepo(dbSQL)
 	
+	// Start keep-alive goroutine to send heartbeats every 30 seconds
+	cancelKeepAlive := keepAlive(ctx, 30*time.Second)
+	defer cancelKeepAlive()
+	
 	// Defer function to handle error cases and set crawl status to error
-	defer func() {
+	defer func() {		
 		if r := recover(); r != nil {
 			logger.Error("Crawl activity panicked", "panic", r, "crawl_id", input.CrawlID)
 			bctx, cancel := context.WithTimeout(context.Background(), config.DefaultTimeout)
@@ -68,8 +72,7 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 	}()
 	
 
-	err = repo.SetCrawlRunning(ctx, input.CrawlID)
-	if err != nil {
+	if err = repo.SetCrawlRunning(ctx, input.CrawlID); err != nil {	
 		logger.Error("Failed to set crawl running", "error", err, "crawl_id", input.CrawlID)
 		return err
 	}
@@ -80,7 +83,7 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 
 	// Create HTTP client with longer timeout and proper context
 	client := &http.Client{
-		Timeout: 2 * time.Minute, // Increased timeout for slow websites
+		Timeout: 20 * time.Second,
 	}
 
 	logger.Info("Fetching URL", "url", input.URL)
@@ -190,4 +193,25 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 	NotifyCrawlUpdateHTTP(input.UserID, input.URLID)
 
 	return nil
+}
+
+func keepAlive(ctx context.Context, interval time.Duration) (stop func()) {
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				activity.RecordHeartbeat(ctx, "Crawl still in progress")
+			case <-ctx.Done():
+				return
+			case <-done:
+				return
+			}
+		}
+	}()
+	return func() {
+		close(done)
+	}
 }

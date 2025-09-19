@@ -7,6 +7,7 @@ import (
 	"sykell-backend/internal/db"
 )
 
+// Repo defines the interface for user repository operations
 type Repo interface {
 	// GetByEmail retrieves a user by their email
 	GetByEmail(ctx context.Context, email string) (UserResponse, error)
@@ -16,10 +17,12 @@ type Repo interface {
 	GetByID(ctx context.Context, id string) (UserResponse, error)
 }
 
+// userRepo is the concrete implementation of the Repo interface
 type userRepo struct {
 	sqlDB *sql.DB
 }
 
+// NewRepo creates a new instance of userRepo
 func NewRepo(db *sql.DB) Repo {
 	return &userRepo{
 		sqlDB: db,
@@ -38,6 +41,7 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (UserResponse, 
 	return toUserResponse(user), nil
 }
 
+// Create adds a new user to the database
 func (r *userRepo) Create(ctx context.Context, email string, passwordHash string) error {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()
@@ -50,6 +54,7 @@ func (r *userRepo) Create(ctx context.Context, email string, passwordHash string
 	return err
 }
 
+// GetByID retrieves a user by their ID
 func (r *userRepo) GetByID(ctx context.Context, id string) (UserResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()

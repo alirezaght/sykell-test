@@ -32,12 +32,14 @@ type NotificationRequest struct {
 	URLID  string `json:"url_id"`
 }
 
+// URLResponse represents the response structure for URL data
 type URLResponse struct {
 	ID string `json:"id"`
 	Domain string `json:"domain"`
 	NormalizedUrl string `json:"normalized_url"`
 }
 
+// CrawlResponse represents the response structure for crawl initiation
 type CrawlResponse struct {
 	ID string `json:"id"`
 	WorkflowID string `json:"workflow_id"`	

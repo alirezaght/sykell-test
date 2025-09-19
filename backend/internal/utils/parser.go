@@ -16,12 +16,32 @@ func ExtractHtmlVersion(doc *html.Node) string {
 		if n.Type == html.DoctypeNode {
 			// Parse DOCTYPE to determine HTML version
 			doctype := strings.ToLower(n.Data)
-			if strings.Contains(doctype, "html5") || doctype == "html" {
+			
+			// Check for HTML5 (simple case)
+			if doctype == "html" {
+
+				hasPublic := false
+				publicVal := ""
+				for _, attr := range n.Attr {
+					if attr.Key == "public" {
+						hasPublic = true
+						publicVal = strings.ToLower(attr.Val)
+						break
+					}
+				}
+				
+				if !hasPublic {
+					return "HTML5" // Simple <!DOCTYPE html>
+				}
+				
+				// Check the PUBLIC identifier
+				if strings.Contains(publicVal, "xhtml") {
+					return "XHTML"
+				} else if strings.Contains(publicVal, "html 4") {
+					return "HTML 4.01"
+				}
+			} else if strings.Contains(doctype, "html5") {
 				return "HTML5"
-			} else if strings.Contains(doctype, "xhtml") {
-				return "XHTML"
-			} else if strings.Contains(doctype, "html 4") {
-				return "HTML 4.01"
 			}
 		}
 	}

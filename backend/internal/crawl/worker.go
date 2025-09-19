@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// CrawlWorkflow is the main workflow for crawling a URL, it orchestrates the crawl activity
 func CrawlWorkflow(ctx workflow.Context, input WorlFlowInput) error {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("Starting crawl workflow", "url", input.URL, "crawl_id", input.CrawlID, "user_id", input.UserID)
@@ -20,7 +21,7 @@ func CrawlWorkflow(ctx workflow.Context, input WorlFlowInput) error {
 		StartToCloseTimeout: 10 * time.Minute,
 		ScheduleToCloseTimeout: 15 * time.Minute, 
 		ScheduleToStartTimeout: 30 * time.Minute,
-		HeartbeatTimeout: 5 * time.Minute, 
+		HeartbeatTimeout: 1 * time.Minute, 
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval:    time.Second,
 			BackoffCoefficient: 2.0,
@@ -42,6 +43,7 @@ func CrawlWorkflow(ctx workflow.Context, input WorlFlowInput) error {
 	return nil
 }
 
+// StartWorker initializes and starts the Temporal worker to process crawl workflows and activities
 func StartWorker(config *config.Config) error {	
 	logger.Info("Attempting to connect to Temporal server", zap.String("host_port", config.TemporalHostPort))
 	

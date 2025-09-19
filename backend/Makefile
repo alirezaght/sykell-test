@@ -76,10 +76,3 @@ dev-setup: docker-up setup
 	$(MAKE) sqlc-generate
 	@echo "Development environment is ready!"
 
-# Tidy dependencies
-tidy:
-	go mod tidy
-
-# Format code
-fmt:
-	go fmt ./...

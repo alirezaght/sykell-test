@@ -11,10 +11,11 @@ import (
 type Repo interface {
 	RemoveURL(ctx context.Context, userID string, urlID string) error
 	CreateURL(ctx context.Context, userID string, normalizedURL string, domain string) error
-	CountURLsByUserID(ctx context.Context, userID string) (int64, error)
+	CountURLsByFilter(ctx context.Context, userID string, query string) (int64, error)
 	GetUrlsWithLatestCrawlsFiltered(ctx context.Context, userID string, limit int32, offset int32, sortBy string, sortOrder string, filter string) ([]CrawlResult, error)
 }
 
+// urlRepo is the concrete implementation of the Repo interface
 type urlRepo struct {
 	sqlDB *sql.DB
 }
@@ -53,11 +54,14 @@ func (r *urlRepo) CreateURL(ctx context.Context, userID string, normalizedURL st
 }
 
 // CountURLsByUserID counts the number of URLs for a given user
-func (r *urlRepo) CountURLsByUserID(ctx context.Context, userID string) (int64, error) {
+func (r *urlRepo) CountURLsByFilter(ctx context.Context, userID string, query string) (int64, error) {
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()
 	queries := db.New(r.sqlDB)
-	count, err := queries.CountUrlsByUser(ctx, userID)
+	count, err := queries.CountUrlsWithFilter(ctx, db.CountUrlsWithFilterParams{
+		UserID: userID,
+		QueryFilter: query,
+	})
 	return count, err
 }
 

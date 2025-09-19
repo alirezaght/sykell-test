@@ -1,195 +1,621 @@
 # Sykell Backend
 
-A Go backend application built with Echo framework, SQLC for type-safe SQL queries, and golang-migrate for database migrations with MySQL.
+Go backend server for the Sykell web crawler application, featuring a clean architecture with SOLID principles, Temporal for reliable task processing, and MySQL for data persistence.
 
-## Features
+## Technology Stack
 
-- **Echo Framework**: Fast and minimalist web framework
-- **SQLC**: Generate type-safe Go code from SQL
-- **Database Migrations**: Version control for database schema using golang-migrate
-- **MySQL**: Primary database with Docker support
-- **Docker Compose**: Easy development environment setup
-- **Environment Configuration**: Flexible configuration management
-- **RESTful API**: Well-structured REST endpoints
-- **PhpMyAdmin**: Web-based MySQL administration tool
+- **Go 1.21+** - Programming language
+- **Echo** - Web framework for HTTP server
+- **MySQL 8.0** - Database
+- **SQLC** - Type-safe SQL code generation
+- **Temporal** - Durable task execution
+- **Zap** - Structured logging
+- **JWT** - Authentication
+- **golang-migrate** - Database migrations
+- **Air** - Hot reload for development
 
-## Project Structure
+## Prerequisites
 
-```
-backend/
-├── cmd/                    # Application entrypoints
-│   └── main.go            # Main application
-├── internal/              # Private application code
-│   ├── config/           # Configuration management
-│   ├── feature1/             # This is a feature first SOLID friendly layout
-│   ├── feature2/             
-│   └── db/              # Generated SQLC code (after generation)
-├── migrations/           # Database migration files
-├── sql/                 # SQL files for SQLC
-│   ├── queries/         # SQL queries
-│   └── schema/          # Database schema
-├── init-scripts/        # MySQL initialization scripts
-├── docker-compose.yml   # Docker services configuration
-├── .env.example         # Environment variables example
-├── sqlc.yaml           # SQLC configuration
-└── Makefile           # Build and development commands
-```
+- **Go 1.21+**
+- **Docker & Docker Compose** (for local development)
+- **Make** (for build automation)
 
-## Getting Started
+## Quick Start
 
-### Prerequisites
+### 1. Clone and Setup
 
-- Go 1.21 or higher
-- Docker and Docker Compose
-- Make (optional, for using Makefile commands)
-
-### Quick Start with Docker
-
-1. Clone the repository and navigate to the backend directory
-2. Start the complete development environment:
-   ```bash
-   make dev-setup
-   ```
-   This will:
-   - Start MySQL and PhpMyAdmin containers
-   - Copy environment configuration
-   - Install development tools
-   - Run database migrations
-   - Generate SQLC code
-
-3. Start the application:
-   ```bash
-   make run
-   ```
-
-### Manual Installation
-
-1. Start the database:
-   ```bash
-   make docker-up
-   ```
-
-2. Install development tools and setup environment:
-   ```bash
-   make setup
-   ```
-
-3. Update the `.env` file with your database configuration
-4. Install dependencies:
-   ```bash
-   go mod tidy
-   ```
-
-5. Generate SQLC code:
-   ```bash
-   make sqlc-generate
-   ```
-
-6. Run database migrations:
-   ```bash
-   make migrate-up
-   ```
-
-7. Start the development server:
-   ```bash
-   make dev
-   # or
-   make run
-   ```
-
-## API Endpoints
-
-### Health Check
-- `GET /` - API information
-- `GET /health` - Health check
-
-### Users
-- `GET /api/v1/users` - List all users
-- `GET /api/v1/users/:id` - Get user by ID
-- `POST /api/v1/users` - Create new user
-- `PUT /api/v1/users/:id` - Update user
-- `DELETE /api/v1/users/:id` - Delete user
-
-## Development
-
-### Available Make Commands
-
-#### Application Commands
-- `make build` - Build the application
-- `make run` - Build and run the application
-- `make dev` - Run with hot reload (requires air)
-- `make test` - Run tests
-- `make clean` - Clean build artifacts
-- `make fmt` - Format code
-- `make tidy` - Tidy dependencies
-
-#### Docker Commands
-- `make docker-up` - Start MySQL and PhpMyAdmin containers
-- `make docker-down` - Stop all containers
-- `make docker-logs` - View container logs
-- `make docker-clean` - Stop containers and remove volumes
-
-#### Database Commands
-- `make migrate-up` - Run database migrations
-- `make migrate-down` - Rollback database migrations
-- `make migrate-create name=migration_name` - Create new migration
-- `make sqlc-generate` - Generate Go code from SQL
-
-#### Complete Setup
-- `make dev-setup` - Complete development environment setup
-
-### Docker Services
-
-The `docker-compose.yml` provides:
-- **MySQL 8.0**: Database server on port 3306
-- **PhpMyAdmin**: Web interface on port 8081 (http://localhost:8081)
-
-Default credentials:
-- MySQL Root Password: `rootpassword`
-- Database: `sykell_db`
-- User: `sykell_user`
-- Password: `sykell_password`
-
-### Environment Variables
-
-Copy `.env.example` to `.env` and configure:
-
-- `PORT` - Server port (default: 8080)
-- `DATABASE_URL` - MySQL connection string
-- `JWT_SECRET` - Secret key for JWT tokens
-- `ENVIRONMENT` - Application environment (development/production)
-- `MYSQL_*` - MySQL Docker configuration
-
-### Database Migrations
-
-Create a new migration:
 ```bash
-make migrate-create name=add_new_table
+cd backend/
+
+# Install development tools and setup environment
+make setup
+
+# This will:
+# - Install sqlc, migrate, air tools
+# - Copy .env.example to .env
 ```
 
-Run migrations:
+### 2. Environment Configuration
+
+Edit the `.env` file with your configuration:
+
 ```bash
+# Server Configuration
+PORT=7070
+ENVIRONMENT=development
+
+# Database Configuration (MySQL)
+DATABASE_URL=sykell_user:sykell_password@tcp(localhost:3306)/sykell_db?charset=utf8mb4&parseTime=True&loc=Local
+
+# MySQL Docker Configuration
+MYSQL_ROOT_PASSWORD=rootpassword
+MYSQL_DATABASE=sykell_db
+MYSQL_USER=sykell_user
+MYSQL_PASSWORD=sykell_password
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+
+# Temporal Configuration
+TEMPORAL_HOST_PORT=localhost:7233
+TEMPORAL_NAMESPACE=default
+BACKEND_URL=http://localhost:7070
+```
+
+### 3. Start Development Environment
+
+```bash
+# Start all services (MySQL, Temporal, Workers)
+make dev-setup
+
+# This will:
+# - Start Docker services
+# - Wait for MySQL to be ready
+# - Run database migrations
+# - Generate SQLC code
+```
+
+### 4. Start Development Server
+
+```bash
+# Start with hot reload
+make dev
+
+# Or build and run manually
+make run
+```
+
+The API will be available at **http://localhost:7070**
+
+## Make Commands
+
+| Command | Description |
+|---------|-------------|
+| `make setup` | Install dev tools and create .env file |
+| `make dev-setup` | Full development environment setup |
+| `make dev` | Start development server with hot reload |
+| `make build` | Build the application binary |
+| `make run` | Build and run the application |
+| `make test` | Run all tests |
+| `make clean` | Clean build artifacts |
+
+
+### Docker Commands
+
+| Command | Description |
+|---------|-------------|
+| `make docker-up` | Start Docker services |
+| `make docker-down` | Stop Docker services |
+| `make docker-logs` | View Docker logs |
+| `make docker-clean` | Stop and remove all containers/volumes |
+
+### Database Commands
+
+| Command | Description |
+|---------|-------------|
+| `make migrate-up` | Run database migrations |
+| `make migrate-down` | Rollback database migrations |
+| `make migrate-create name=migration_name` | Create new migration |
+| `make sqlc-generate` | Generate Go code from SQL queries |
+
+### Tool Installation
+
+| Command | Description |
+|---------|-------------|
+| `make install-tools` | Install sqlc, migrate, air tools |
+
+## Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `PORT` | HTTP server port | `7070` | Yes |
+| `ENVIRONMENT` | Environment mode | `development` | Yes |
+| `DATABASE_URL` | MySQL connection string | - | Yes |
+| `JWT_SECRET` | JWT signing secret | - | Yes |
+| `TEMPORAL_HOST_PORT` | Temporal server address | `localhost:7233` | Yes |
+| `TEMPORAL_NAMESPACE` | Temporal namespace | `default` | Yes |
+| `BACKEND_URL` | Backend base URL for workers | `http://localhost:7070` | Yes |
+
+## Architecture & SOLID Principles
+
+### Feature-First Structure
+
+Each feature is organized in its own package following SOLID principles:
+
+```
+internal/
+├── config/              # Configuration management
+├── middleware/          # HTTP middleware (JWT, logging)
+├── db/                  # Generated SQLC code
+├── utils/               # Shared utilities
+├── temporal/            # Temporal service integration
+└── [feature]/           # Feature packages
+    ├── handler.go       # HTTP handlers (network layer)
+    ├── service.go       # Business logic
+    ├── repo.go         # Data access layer (interface)
+    ├── dto.go          # Data Transfer Objects
+    ├── [feature]_test.go # Unit tests
+    └── [extensions].go  # Feature extensions
+```
+
+### Layer Responsibilities
+
+#### 1. Handler Layer (`*_handler.go`)
+- **Responsibility**: HTTP request/response handling
+- **Concerns**: Request validation, response formatting, authentication
+- **Dependencies**: Service layer only
+
+```go
+// Example: handler only handles HTTP concerns
+func (h *Handler) CreateUser(c echo.Context) error {
+    var req CreateUserRequest
+    if err := c.Bind(&req); err != nil {
+        return echo.NewHTTPError(http.StatusBadRequest, "Invalid request")
+    }
+    
+    // Delegate to service layer
+    user, err := h.service.CreateUser(c.Request().Context(), req)
+    if err != nil {
+        return handleServiceError(err)
+    }
+    
+    return c.JSON(http.StatusCreated, user)
+}
+```
+
+#### 2. Service Layer (`*_service.go`)
+- **Responsibility**: Business logic and orchestration
+- **Concerns**: Business rules, data transformation, external service coordination
+- **Dependencies**: Repository interfaces, external services
+
+```go
+// Example: service handles business logic
+func (s *service) CreateUser(ctx context.Context, req CreateUserRequest) (*UserResponse, error) {
+    // Business validation
+    if err := s.validateUserData(req); err != nil {
+        return nil, err
+    }
+    
+    // Hash password (business logic)
+    hashedPassword, err := utils.HashPassword(req.Password)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Delegate to repository
+    return s.repo.Create(ctx, req.Email, hashedPassword)
+}
+```
+
+#### 3. Repository Layer (`*_repo.go`)
+- **Responsibility**: Data access abstraction
+- **Concerns**: Database operations, query composition
+- **Dependencies**: Database connection only
+
+```go
+// Repository is always an interface
+type Repo interface {
+    Create(ctx context.Context, email string, passwordHash string) (*UserResponse, error)
+    GetByEmail(ctx context.Context, email string) (*UserResponse, error)
+    GetByID(ctx context.Context, id string) (*UserResponse, error)
+}
+
+// Implementation uses SQLC generated code
+type userRepo struct {
+    queries *db.Queries
+}
+
+func (r *userRepo) Create(ctx context.Context, email string, passwordHash string) (*UserResponse, error) {
+    // Use SQLC generated methods
+    user, err := r.queries.CreateUser(ctx, db.CreateUserParams{
+        Email:        email,
+        PasswordHash: passwordHash,
+    })
+    // ... error handling and response mapping
+}
+```
+
+#### 4. DTO Layer (`*_dto.go`)
+- **Responsibility**: Data contracts and validation
+- **Concerns**: Request/response structures, validation rules
+
+```go
+type CreateUserRequest struct {
+    Email    string `json:"email" validate:"required,email"`
+    Password string `json:"password" validate:"required,min=8"`
+}
+
+type UserResponse struct {
+    ID    string `json:"id"`
+    Email string `json:"email"`
+}
+```
+
+## Working with SQLC
+
+### Adding New Queries
+
+1. **Write SQL query** in `sql/queries/[feature].sql`:
+
+```sql
+-- name: GetUserByEmail :one
+SELECT id, email, password_hash, created_at, updated_at
+FROM users
+WHERE email = ? LIMIT 1;
+
+-- name: CreateUser :one
+INSERT INTO users (id, email, password_hash)
+VALUES (?, ?, ?)
+RETURNING id, email, created_at, updated_at;
+```
+
+2. **Generate Go code**:
+
+```bash
+make sqlc-generate
+```
+
+3. **Use in repository**:
+
+```go
+func (r *userRepo) GetByEmail(ctx context.Context, email string) (*UserResponse, error) {
+    user, err := r.queries.GetUserByEmail(ctx, email)
+    if err != nil {
+        return nil, err
+    }
+    
+    return &UserResponse{
+        ID:    user.ID,
+        Email: user.Email,
+    }, nil
+}
+```
+
+### SQLC Configuration
+
+The `sqlc.yaml` file configures code generation:
+
+```yaml
+version: "2"
+sql:
+  - engine: "mysql"
+    queries: "./sql/queries"    # SQL queries location
+    schema: "./migrations"      # Migration files for schema
+    gen:
+      go:
+        package: "db"
+        out: "./internal/db"    # Generated code location
+        emit_interface: true    # Generate interfaces
+        emit_json_tags: true    # Add JSON tags
+```
+
+## Adding a New Feature
+
+Follow these steps to add a new feature that adheres to SOLID principles:
+
+### 1. Create Feature Package
+
+```bash
+mkdir internal/newfeature
+```
+
+### 2. Define Data Structures (`dto.go`)
+
+```go
+package newfeature
+
+// Request/Response structures
+type CreateRequest struct {
+    Name string `json:"name" validate:"required"`
+}
+
+type Response struct {
+    ID   string `json:"id"`
+    Name string `json:"name"`
+}
+```
+
+### 3. Create Repository Interface (`repo.go`)
+
+```go
+package newfeature
+
+import "context"
+
+// Always define as interface for testability
+type Repo interface {
+    Create(ctx context.Context, name string) (*Response, error)
+    GetByID(ctx context.Context, id string) (*Response, error)
+    List(ctx context.Context) ([]Response, error)
+}
+
+// Implementation
+type repo struct {
+    queries *db.Queries
+}
+
+func NewRepo(queries *db.Queries) Repo {
+    return &repo{queries: queries}
+}
+```
+
+### 4. Implement Service (`service.go`)
+
+```go
+package newfeature
+
+import "context"
+
+type Service interface {
+    Create(ctx context.Context, req CreateRequest) (*Response, error)
+    Get(ctx context.Context, id string) (*Response, error)
+}
+
+type service struct {
+    repo Repo
+    // other dependencies (logger, external services)
+}
+
+func NewService(repo Repo) Service {
+    return &service{repo: repo}
+}
+
+func (s *service) Create(ctx context.Context, req CreateRequest) (*Response, error) {
+    // Business validation
+    if err := s.validateRequest(req); err != nil {
+        return nil, err
+    }
+    
+    // Business logic
+    // ...
+    
+    // Delegate to repository
+    return s.repo.Create(ctx, req.Name)
+}
+```
+
+### 5. Create HTTP Handlers (`handler.go`)
+
+```go
+package newfeature
+
+import (
+    "net/http"
+    "github.com/labstack/echo/v4"
+)
+
+type Handler struct {
+    service Service
+}
+
+func NewHandler(service Service) *Handler {
+    return &Handler{service: service}
+}
+
+func (h *Handler) Create(c echo.Context) error {
+    var req CreateRequest
+    if err := c.Bind(&req); err != nil {
+        return echo.NewHTTPError(http.StatusBadRequest, "Invalid request")
+    }
+    
+    result, err := h.service.Create(c.Request().Context(), req)
+    if err != nil {
+        return handleError(err)
+    }
+    
+    return c.JSON(http.StatusCreated, result)
+}
+
+// Register routes
+func (h *Handler) RegisterRoutes(g *echo.Group) {
+    g.POST("/newfeature", h.Create)
+    g.GET("/newfeature/:id", h.Get)
+}
+```
+
+### 6. Add Database Migration
+
+```bash
+make migrate-create name=create_newfeature_table
+```
+
+Edit the generated migration files:
+
+```sql
+-- migrations/000X_create_newfeature_table.up.sql
+CREATE TABLE newfeature (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### 7. Add SQL Queries
+
+Create `sql/queries/newfeature.sql`:
+
+```sql
+-- name: CreateNewFeature :one
+INSERT INTO newfeature (id, name)
+VALUES (?, ?)
+RETURNING id, name, created_at, updated_at;
+
+-- name: GetNewFeatureByID :one
+SELECT id, name, created_at, updated_at
+FROM newfeature
+WHERE id = ? LIMIT 1;
+```
+
+### 8. Generate and Wire Up
+
+```bash
+# Generate SQLC code
+make sqlc-generate
+
+# Run migration
 make migrate-up
 ```
 
-Rollback migrations:
-```bash
-make migrate-down
+### 9. Register in Main Application
+
+In `cmd/main.go`:
+
+```go
+// Initialize dependencies
+newFeatureRepo := newfeature.NewRepo(queries)
+newFeatureService := newfeature.NewService(newFeatureRepo)
+newFeatureHandler := newfeature.NewHandler(newFeatureService)
+
+// Register routes
+apiV1 := e.Group("/api/v1")
+newFeatureHandler.RegisterRoutes(apiV1)
 ```
 
-### SQLC Usage
+### 10. Add Tests
 
-1. Define your database schema in `sql/schema/`
-2. Write SQL queries in `sql/queries/`
-3. Generate Go code: `make sqlc-generate`
-4. The generated code will be available in `internal/db/`
+Create `newfeature_test.go`:
 
-## Technologies Used
+```go
+package newfeature
 
-- [Echo](https://echo.labstack.com/) - Web framework
-- [SQLC](https://sqlc.dev/) - Generate Go code from SQL
-- [golang-migrate](https://github.com/golang-migrate/migrate) - Database migrations
-- [MySQL](https://www.mysql.com/) - Database
-- [Docker](https://www.docker.com/) - Containerization
-- [godotenv](https://github.com/joho/godotenv) - Environment variables
-- [go-sql-driver/mysql](https://github.com/go-sql-driver/mysql) - MySQL driver
+import (
+    "testing"
+    "context"
+)
+
+func TestService_Create(t *testing.T) {
+    // Mock repository
+    mockRepo := &mockRepo{}
+    service := NewService(mockRepo)
+    
+    // Test business logic
+    req := CreateRequest{Name: "test"}
+    result, err := service.Create(context.Background(), req)
+    
+    // Assertions
+    assert.NoError(t, err)
+    assert.Equal(t, "test", result.Name)
+}
+```
+
+## Testing Strategy
+
+### Unit Tests
+- **Location**: Same package as source code (`*_test.go`)
+- **Focus**: Business logic in service layer
+- **Mocking**: Repository interfaces
+
+### Integration Tests
+- **Location**: `tests/integration/`
+- **Focus**: Database interactions, API endpoints
+- **Setup**: Test database, real dependencies
+
+### Running Tests
+
+```bash
+# All tests
+make test
+
+# Specific package
+go test ./internal/user -v
+
+# With coverage
+go test -cover ./...
+```
+
+## Logging
+
+The application uses Zap for structured logging:
+
+```go
+import "go.uber.org/zap"
+
+// In service layer
+func (s *service) CreateUser(ctx context.Context, req CreateUserRequest) error {
+    s.logger.Info("Creating user",
+        zap.String("email", req.Email),
+        zap.String("request_id", getRequestID(ctx)),
+    )
+    
+    // ... business logic
+    
+    s.logger.Error("Failed to create user",
+        zap.Error(err),
+        zap.String("email", req.Email),
+    )
+}
+```
+
+## Authentication & Authorization
+
+### JWT Authentication
+- **Bearer tokens** for API endpoints
+- **Cookie-based auth** for SSE connections (header limitations)
+
+### Middleware Usage
+
+```go
+// Protected routes
+protected := apiV1.Group("")
+protected.Use(middleware.JWTAuth(jwtSecret))
+protected.GET("/profile", userHandler.GetProfile)
+
+// Public routes
+apiV1.POST("/auth/login", authHandler.Login)
+apiV1.POST("/auth/register", authHandler.Register)
+```
+
+## Temporal Integration
+
+### Worker Implementation
+
+Workers are implemented in the feature packages:
+
+```go
+// internal/crawl/worker.go
+func (w *CrawlWorker) CrawlActivity(ctx context.Context, params CrawlParams) error {
+    // Long-running crawl logic
+    // Fault-tolerant and retryable
+}
+
+// Register in cmd/worker/main.go
+worker.RegisterActivity(crawlWorker.CrawlActivity)
+```
+
+### Task Scheduling
+
+```go
+// In service layer
+func (s *service) StartCrawl(ctx context.Context, urlID string) error {
+    // Queue task to Temporal
+    workflowOptions := client.StartWorkflowOptions{
+        ID:        fmt.Sprintf("crawl-%s", urlID),
+        TaskQueue: "crawl-queue",
+    }
+    
+    _, err := s.temporalClient.ExecuteWorkflow(ctx, workflowOptions, 
+        "CrawlWorkflow", CrawlParams{URLID: urlID})
+    return err
+}
+```

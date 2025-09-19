@@ -1,69 +1,145 @@
-# React + TypeScript + Vite
+# Sykell Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite frontend for the Sykell web crawler application.
 
-Currently, two official plugins are available:
+## Technology Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Fast build tool and dev server
+- **Tailwind CSS** - Utility-first CSS framework
+- **React Query** - Data fetching and caching
+- **React Hook Form** - Form handling with validation
+- **React Router** - Client-side routing
+- **Zod** - Schema validation
+- **Axios** - HTTP client
 
-## Expanding the ESLint configuration
+## Prerequisites
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Node.js 18+** (recommended: use Node.js 20 LTS)
+- **npm** or **yarn** or **pnpm**
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Quick Start
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+### 1. Install Dependencies
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Using npm
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Environment Configuration
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Create a `.env` file in the frontend directory:
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cp .env.example .env
+```
+
+Configure the environment variables in `.env`:
+
+```bash
+# API Configuration - Backend server URL
+VITE_API_BASE_URL=http://localhost:7070/api/v1
+```
+
+### 3. Start Development Server
+
+```bash
+# Using npm
+npm run dev
+```
+
+The application will be available at **http://localhost:5173**
+
+## Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `VITE_API_BASE_URL` | Backend API base URL | `http://localhost:7070/api/v1` | Yes |
+
+### Notes:
+- All environment variables must be prefixed with `VITE_` to be accessible in the frontend
+- The backend must be running on the configured URL for the frontend to work properly
+- The default configuration assumes the backend is running on `localhost:7070`
+
+## Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server with hot reload |
+| `npm run build` | Build for production |
+
+## Development Workflow
+
+### 1. Start Backend First
+Ensure the backend server is running on `http://localhost:7070` before starting the frontend.
+
+### 2. Authentication Flow
+The frontend uses JWT tokens for authentication:
+- **Bearer tokens** for API requests (stored in localStorage)
+- **Cookies** for Server-Sent Events (SSE) connection
+- Automatic token refresh and logout on authentication errors
+
+### 3. Real-time Updates
+The application uses Server-Sent Events (SSE) for real-time crawl status updates:
+- Connection established automatically after login
+- Live updates for crawl progress and completion
+- Automatic reconnection on connection loss
+
+## Project Structure
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── AddUrlModal.tsx     # Modal for adding new URLs
+│   ├── LoadingSpinner.tsx  # Loading indicator
+│   ├── Pagination.tsx      # Table pagination
+│   ├── ProtectedRoute.tsx  # Route protection wrapper
+│   ├── SearchFilter.tsx    # Search and filter controls
+│   └── UrlTable.tsx        # Main data table
+├── pages/               # Page-level components
+│   ├── Dashboard.tsx       # Main dashboard layout
+│   ├── DashboardPage.tsx   # Dashboard page wrapper
+│   ├── LoginPage.tsx       # Login form page
+│   └── RegisterPage.tsx    # Registration form page
+├── services/            # API communication layer
+│   ├── api.ts              # Axios instance and interceptors
+│   ├── auth.ts             # Authentication API calls
+│   └── dashboardApi.ts     # Dashboard data API calls
+├── hooks/               # Custom React hooks
+│   ├── useCrawlUpdates.ts  # SSE connection for real-time updates
+│   └── useDashboard.ts     # Dashboard data fetching
+├── context/             # React context providers
+│   └── AuthContext.tsx     # Authentication state management
+├── types/               # TypeScript type definitions
+│   ├── auth.ts             # Authentication types
+│   ├── dashboard.ts        # Dashboard data types
+│   └── validation.ts       # Form validation schemas
+└── assets/              # Static assets
+    └── react.svg           # React logo
+```
+
+## API Integration
+
+The frontend communicates with the backend through:
+
+### REST API Endpoints
+- `POST /auth/register` - User registration
+- `POST /auth/login` - User authentication
+- `GET /auth/profile` - Get user profile
+- `GET /urls` - Fetch URLs with pagination and filters
+- `POST /urls` - Add new URL
+- `DELETE /urls/:id` - Remove URL
+- `POST /crawl/start` - Start crawling selected URLs
+- `POST /crawl/stop` - Stop crawling selected URLs
+
+### Real-time Communication
+- `GET /crawl/stream` - Server-Sent Events for live updates
+
+## Building for Production
+
+```bash
+# Build the application
+npm run build
 ```
