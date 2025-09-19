@@ -81,6 +81,25 @@ services:
     networks:
       - sykell_network
 
+  temporal-worker:
+    # Development worker with hot reload
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      target: builder
+    volumes:
+      - ./backend:/app
+      - go_mod_cache:/go/pkg/mod
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: debug
+      LOG_FORMAT: console
+    # Use air for hot reload
+    command: sh -c "go mod download && air -c .air-worker.toml"
+    depends_on:
+      temporal:
+        condition: service_healthy
+
 volumes:
   mysql_data:
     driver: local

@@ -77,7 +77,7 @@ func main() {
 	e.Use(middleware.Recover())
 	
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"http://localhost:5173"}, // Add specific origins for cookie support
+		AllowOrigins:     []string{"http://localhost:5173", "http://localhost"}, // Add specific origins for cookie support
 		AllowMethods:     []string{echo.GET, echo.PUT, echo.POST, echo.DELETE, echo.OPTIONS},
 		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
 		AllowCredentials: true, // Enable credentials (cookies) support

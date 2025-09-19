@@ -1,0 +1,137 @@
+# Main docker-compose file for Sykell application
+# Includes MySQL, Temporal, Backend, Worker, and Frontend services
+
+services:
+  # Database Migration Service
+  migrate:
+    build:
+      context: .
+      dockerfile: migrate.dockerfile
+    container_name: sykell_migrate
+    environment:
+      - DATABASE_URL=mysql://sykell_user:sykell_password@tcp(mysql:3306)/sykell_db
+    networks:
+      - sykell-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    profiles:
+      - migration
+
+  mysql:
+    image: mysql:8.0
+    container_name: sykell_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: sykell_db
+      MYSQL_USER: sykell_user
+      MYSQL_PASSWORD: sykell_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - sykell-network          
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sykell_backend
+    restart: unless-stopped
+    environment:
+      PORT: 7070
+      ENVIRONMENT: development
+      LOG_LEVEL: debug
+      LOG_FORMAT: console
+      DATABASE_URL: sykell_user:sykell_password@tcp(mysql:3306)/sykell_db?charset=utf8mb4&parseTime=True&loc=Local
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      TEMPORAL_HOST_PORT: temporal:7233
+      TEMPORAL_NAMESPACE: default
+    ports:
+      - "7070:7070"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - sykell-network
+    
+  temporal-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    container_name: sykell_temporal_worker
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: debug
+      LOG_FORMAT: console
+      DATABASE_URL: sykell_user:sykell_password@tcp(mysql:3306)/sykell_db?charset=utf8mb4&parseTime=True&loc=Local
+      TEMPORAL_HOST_PORT: temporal:7233
+      TEMPORAL_NAMESPACE: default
+      BACKEND_URL: http://backend:7070
+    depends_on:
+      mysql:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - sykell-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sykell_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - sykell-network
+
+  temporal:
+    image: temporalio/auto-setup:1.28
+    container_name: sykell_temporal
+    environment:
+      - DB=mysql8
+      - DB_PORT=3306
+      - MYSQL_SEEDS=mysql
+      - MYSQL_USER=temporal_user
+      - MYSQL_PWD=temporal_password
+      - MYSQL_DATABASE=temporal
+      - MYSQL_VISIBILITY_DATABASE=temporal_visibility
+    ports:
+      - "7233:7233"
+      - "8233:8233"  # Web UI
+    networks:
+      - sykell-network
+    healthcheck:
+      test: ["CMD", "tctl", "--address", "temporal:7233", "namespace", "describe", "default"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 120s 
+    depends_on:
+      mysql:
+        condition: service_healthy
+    
+
+networks:
+  sykell-network:
+    driver: bridge
+
+volumes:
+  go_mod_cache:
+  node_modules_cache:
+  mysql_data:
+    driver: local
+

@@ -26,6 +26,12 @@ type SSENotification struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// NotificationRequest represents the payload for internal notification requests
+type NotificationRequest struct {
+	UserID string `json:"user_id"`
+	URLID  string `json:"url_id"`
+}
+
 type URLResponse struct {
 	ID string `json:"id"`
 	Domain string `json:"domain"`

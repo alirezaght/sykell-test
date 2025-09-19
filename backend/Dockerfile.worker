@@ -1,0 +1,54 @@
+# Temporal Worker Dockerfile
+# Multi-stage build for Go application
+
+# Build stage
+FROM golang:1.24-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the temporal worker
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o worker cmd/worker/main.go
+
+# Final stage
+FROM alpine:latest
+
+# Install ca-certificates for HTTPS requests and tzdata for timezone
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /root/
+
+# Copy the binary from builder stage
+COPY --from=builder /app/worker .
+
+# Copy any necessary configuration files
+COPY --from=builder /app/sql ./sql
+
+# Create a non-root user
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
+
+# Change ownership of the app directory
+RUN chown -R appuser:appgroup /root
+
+# Switch to non-root user
+USER appuser
+
+# Health check (worker doesn't expose HTTP, so we'll check if process is running)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD pgrep -f worker || exit 1
+
+# Command to run the worker
+CMD ["./worker"]

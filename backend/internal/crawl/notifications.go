@@ -13,21 +13,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// NotificationRequest represents the payload for internal notification requests
-type NotificationRequest struct {
-	UserID string `json:"user_id"`
-	URLID  string `json:"url_id"`
-}
-
 // NotifyCrawlUpdateHTTP sends an HTTP request to the main server to trigger SSE notifications
 // This is used from the Temporal worker process to communicate with the main server process
-func NotifyCrawlUpdateHTTP(userID, urlID string) {
-	// Get the server port from environment, default to 8080
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	
+func NotifyCrawlUpdateHTTP(userID, urlID string) {			
 	// Create the notification request
 	request := NotificationRequest{
 		UserID: userID,
@@ -42,7 +30,7 @@ func NotifyCrawlUpdateHTTP(userID, urlID string) {
 	}
 	
 	// Make HTTP request to the main server
-	url := fmt.Sprintf("http://localhost:%s/api/v1/internal/notify-crawl-update", port)
+	url := fmt.Sprintf("%s/api/v1/internal/notify-crawl-update", os.Getenv("BACKEND_URL"))
 	
 	client := &http.Client{
 		Timeout: 5 * time.Second,

@@ -28,11 +28,8 @@ export const UrlTable: React.FC<UrlTableProps> = ({
   data,
   sortableColumns,
   currentSort,
-  onSort,
-  onDelete,
-  onBatchDelete,
-  onStartCrawl,
-  onStopCrawl,
+  onSort,  
+  onBatchDelete,    
   onBatchCrawl,
   isDeleting,
   isBatchDeleting,
@@ -73,14 +70,7 @@ export const UrlTable: React.FC<UrlTableProps> = ({
   const handleSelectUrl = (urlId: string) => {
     onSelectUrl(urlId);
   };
-
-  const canStartCrawl = (status?: string | null) => {
-    return !status || status === 'completed' || status === 'failed' || status === 'cancelled';
-  };
-
-  const canStopCrawl = (status?: string | null) => {
-    return status === 'running' || status === 'queued';
-  };
+    
 
   const SortIcon: React.FC<{ column: SortColumn }> = ({ column }) => {
     if (currentSort.column !== column) {
