@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"sykell-backend/internal/logger"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -14,13 +16,48 @@ import (
 
 // SSEManager manages SSE connections and broadcasting
 type SSEManager struct {
-	clients map[string]chan SSENotification // userID -> channel
+	clients map[string]map[string]chan SSENotification
 	mutex   sync.RWMutex
+	nextID  uint64
 }
 
 // Global SSE manager instance
 var sseManager = &SSEManager{
-	clients: make(map[string]chan SSENotification),
+	clients: make(map[string]map[string]chan SSENotification),
+}
+
+func (m *SSEManager) addClient(userID string, ch chan SSENotification) string {
+	id := strconv.FormatUint(atomic.AddUint64(&m.nextID, 1), 10)
+	m.mutex.Lock()
+	if _, ok := m.clients[userID]; !ok {
+		m.clients[userID] = make(map[string]chan SSENotification)
+	}
+	m.clients[userID][id] = ch
+	m.mutex.Unlock()
+	return id
+}
+
+func (m *SSEManager) removeClient(userID, connID string) {
+	m.mutex.Lock()
+	if conns, ok := m.clients[userID]; ok {
+		if ch, ok2 := conns[connID]; ok2 {
+			delete(conns, connID)
+			close(ch)
+		}
+		if len(conns) == 0 {
+			delete(m.clients, userID)
+		}
+	}
+	m.mutex.Unlock()
+}
+
+func (m *SSEManager) connectionCount(userID string) int {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	if conns, ok := m.clients[userID]; ok {
+		return len(conns)
+	}
+	return 0
 }
 
 // StreamCrawlUpdates handles SSE connections for crawl status notifications
@@ -40,24 +77,22 @@ func (h *CrawlHandler) StreamCrawlUpdates(c echo.Context) error {
 
 	ctx := c.Request().Context()
 	
-	// Create a channel for this client
 	clientChan := make(chan SSENotification, 10)
-	
-	// Register client
-	sseManager.mutex.Lock()
-	sseManager.clients[userID] = clientChan
-	sseManager.mutex.Unlock()
+	connID := sseManager.addClient(userID, clientChan)
 	
 	// Cleanup on disconnect
 	defer func() {
-		sseManager.mutex.Lock()
-		delete(sseManager.clients, userID)
-		close(clientChan)
-		sseManager.mutex.Unlock()
-		logger.Debug("SSE connection closed for user", zap.String("user_id", userID))
+		sseManager.removeClient(userID, connID)
+		logger.Debug("SSE connection closed for user", 
+			zap.String("user_id", userID), 
+			zap.String("conn_id", connID),
+			zap.Int("remaining", sseManager.connectionCount(userID)))
 	}()
 
-	logger.Info("SSE connection established for user", zap.String("user_id", userID))
+	logger.Info("SSE connection established for user", 
+		zap.String("user_id", userID), 
+		zap.String("conn_id", connID),
+		zap.Int("total_connections", sseManager.connectionCount(userID)))
 	
 	// Send initial connection confirmation
 	initialNotification := SSENotification{
@@ -74,7 +109,10 @@ func (h *CrawlHandler) StreamCrawlUpdates(c echo.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case notification := <-clientChan:
+		case notification, ok := <-clientChan:
+			if !ok {
+				return nil
+			}
 			if err := sendSSEEvent(c, notification); err != nil {
 				logger.Error("Error sending SSE event", zap.Error(err))
 				return err
@@ -103,25 +141,26 @@ func NotifyCrawlUpdate(userID, urlID string) {
 	}
 
 	sseManager.mutex.RLock()
-	defer sseManager.mutex.RUnlock()
+	conns := sseManager.clients[userID]
+	var chans []chan SSENotification
+	for _, ch := range conns {
+		chans = append(chans, ch)
+	}
+	sseManager.mutex.RUnlock()
 
-	logger.Debug("SSE notification attempt", 
+	sent := 0
+	for _, ch := range chans {
+		select {
+		case ch <- notification:
+			sent++
+		default:
+		}
+	}
+	logger.Debug("SSE broadcast attempted", 
 		zap.String("user_id", userID), 
 		zap.String("url_id", urlID), 
-		zap.Int("total_clients", len(sseManager.clients)))
-
-	if clientChan, exists := sseManager.clients[userID]; exists {
-		select {
-		case clientChan <- notification:
-			logger.Debug("Sent crawl update notification", 
-				zap.String("user_id", userID), 
-				zap.String("url_id", urlID))
-		default:
-			logger.Warn("Client channel full, dropping notification", zap.String("user_id", userID))
-		}
-	} else {
-		logger.Debug("No SSE connection found for user", zap.String("user_id", userID))
-	}
+		zap.Int("connections", len(chans)),
+		zap.Int("sent", sent))
 }
 
 
