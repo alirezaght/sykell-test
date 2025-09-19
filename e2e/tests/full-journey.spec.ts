@@ -1,6 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { AuthPage } from '../utils/AuthPage';
-import { DashboardPage } from '../utils/DashboardPage';
 
 // Test configuration
 const TEST_EMAIL = process.env.TEST_EMAIL || 'test@example.com';
@@ -18,9 +16,7 @@ test.describe('Full User Journey E2E Test', () => {
     console.log('Cleared all browser state - starting fresh test...');
   });
 
-  test('login -> add url -> start crawl -> verify results', async ({ page }) => {
-    const authPage = new AuthPage(page);
-    const dashboardPage = new DashboardPage(page);
+  test('login -> add url -> start crawl -> verify results', async ({ page }) => {    
 
     // Login process
     console.log('Starting login process...');
