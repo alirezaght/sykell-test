@@ -13,11 +13,21 @@ RUN apk add --no-cache git ca-certificates tzdata
 # Copy go mod and sum files
 COPY go.mod go.sum ./
 
+RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+RUN go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+# Install necessary tools
+RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+RUN go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
 # Download dependencies
 RUN go mod download
 
 # Copy source code
 COPY . .
+
+# Generate code from SQL schema
+RUN sqlc generate
 
 # Build the temporal worker
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o worker cmd/worker/main.go
