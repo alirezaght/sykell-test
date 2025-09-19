@@ -55,6 +55,6 @@ func (s *Service) AddURL(ctx context.Context, userID string, request AddRequest)
 	if err != nil {
 		return err
 	}	
-	err = s.repo.CreateURL(ctx, userID, normalizeURL, domain)
-	return err
+	s.repo.CreateURL(ctx, userID, normalizeURL, domain)
+	return nil
 }

@@ -1,0 +1,21 @@
+{
+  "name": "sykell-e2e-tests",
+  "version": "1.0.0",
+  "description": "End-to-end tests for Sykell application",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "show-report": "playwright show-report",
+    "install-browsers": "playwright install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.0",
+    "@types/node": "^20.14.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0"
+  }
+}
