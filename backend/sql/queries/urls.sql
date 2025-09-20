@@ -98,7 +98,9 @@ ORDER BY
   CASE WHEN sqlc.arg(sort_by)='inaccessible_links_count' AND sqlc.arg(sort_dir)='asc'  THEN c.inaccessible_links_count END ASC,
   CASE WHEN sqlc.arg(sort_by)='inaccessible_links_count' AND sqlc.arg(sort_dir)='desc' THEN c.inaccessible_links_count END DESC,
   CASE WHEN sqlc.arg(sort_by)='has_login_form'           AND sqlc.arg(sort_dir)='asc'  THEN c.has_login_form END ASC,
-  CASE WHEN sqlc.arg(sort_by)='has_login_form'           AND sqlc.arg(sort_dir)='desc' THEN c.has_login_form END DESC
+  CASE WHEN sqlc.arg(sort_by)='has_login_form'           AND sqlc.arg(sort_dir)='desc' THEN c.has_login_form END DESC,
+  -- Default fallback sort when no conditions match
+  u.created_at DESC
 
 LIMIT ? OFFSET ?;
 

@@ -47,6 +47,10 @@ func mapSortColumn(frontendColumn string) string {
 		"h1_count":            "h1_count",
 		"h2_count":            "h2_count",
 		"h3_count":            "h3_count",
+		"h4_count":            "h4_count",
+		"h5_count":            "h5_count",
+		"h6_count":            "h6_count",
+		"has_login_form":      "has_login_form",
 		"created_at":          "url_created_at",
 		"finished_at":         "finished_at",
 	}
