@@ -218,6 +218,7 @@ Additional files can be created to prevent bloat:
   - Cookie-based auth for SSE (header limitations)
 
 #### Temporal Integration
+This code keeps business logic orchestration-agnostic, we can swap to anything elese, however I chose Temporal for:
 
 - **Scalable Workers**: Multiple worker instances can process tasks
 - **Durability**: Tasks survive system restarts
@@ -280,7 +281,6 @@ internal/crawl/
 ├── service.go          # Crawl orchestration  
 ├── repo.go            # Data persistence interface
 ├── dto.go             # API request/response models
-├── worker.go          # Temporal worker implementation
 ├── start.go           # Service extension: start crawl
 ├── stop.go            # Service extension: stop crawl
 ├── notifications.go   # Handler extension: SSE
