@@ -1,11 +1,8 @@
 package crawl
 
 import (
-	"context"
-	"time"
-
+	"context"	
 	"github.com/google/uuid"
-	"go.temporal.io/sdk/client"
 )
 
 // StartCrawl initiates a crawl for the specified URL by the user
@@ -35,17 +32,9 @@ func (s *CrawlService) StartCrawl(ctx context.Context, userID string, urlID stri
 	if err != nil {
 		return err
 	}
-
-	workflowOptions := client.StartWorkflowOptions{
-		ID:        workflowID,
-		TaskQueue: TaskQueueName,
-		WorkflowExecutionTimeout: 10 * time.Minute, // Set explicit workflow timeout
-		WorkflowTaskTimeout:      time.Minute,      // Set workflow task timeout		
-		StartDelay: 3 * time.Second, // Small delay to ensure the sse connection is ready
-	}
-	
+		
 	// Start the workflow	
-	_, err = s.temporalService.GetTemporalClient().ExecuteWorkflow(ctx, workflowOptions, WorkflowName, WorlFlowInput{
+	err = s.orchestrator.Start(ctx, WorlFlowInput{
 		URLID: url.ID,
 		UserID: userID,
 		WorkflowID: workflowID,

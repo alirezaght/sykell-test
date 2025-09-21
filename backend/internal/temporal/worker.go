@@ -1,7 +1,8 @@
-package crawl
+package temporal
 
 import (
 	"sykell-backend/internal/config"
+	"sykell-backend/internal/crawl"
 	"sykell-backend/internal/logger"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 )
 
 // CrawlWorkflow is the main workflow for crawling a URL, it orchestrates the crawl activity
-func CrawlWorkflow(ctx workflow.Context, input WorlFlowInput) error {
+func CrawlWorkflow(ctx workflow.Context, input crawl.WorlFlowInput) error {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("Starting crawl workflow", "url", input.URL, "crawl_id", input.CrawlID, "user_id", input.UserID)
 
@@ -33,7 +34,7 @@ func CrawlWorkflow(ctx workflow.Context, input WorlFlowInput) error {
 	ctx = workflow.WithActivityOptions(ctx, activityOptions)
 	
 	logger.Info("Executing crawl activity", "url", input.URL, "crawl_id", input.CrawlID)
-	err := workflow.ExecuteActivity(ctx, CrawlURLActivity, input).Get(ctx, nil)
+	err := workflow.ExecuteActivity(ctx, crawl.CrawlURLActivity, input).Get(ctx, nil)
 	if err != nil {
 		logger.Error("Crawl workflow failed", "error", err, "url", input.URL, "crawl_id", input.CrawlID)
 		return err
@@ -88,7 +89,7 @@ func StartWorker(config *config.Config) error {
 	w.RegisterWorkflow(CrawlWorkflow)
 
 	// Register activities
-	w.RegisterActivity(CrawlURLActivity)
+	w.RegisterActivity(crawl.CrawlURLActivity)
 	
 	logger.Info("Starting Temporal worker on task queue", zap.String("task_queue", TaskQueueName))
 	

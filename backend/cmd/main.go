@@ -63,8 +63,9 @@ func main() {
 	urlService := url.NewService(urlRepo, cfg)
 	urlHandler := url.NewHandler(urlService)
 
+	temporalOrchestrator := temporal.NewOrchestrator(*temporalService)
 	crawlRepo := crawl.NewRepo(db)
-	crawlService := crawl.NewCrawlService(crawlRepo, cfg, temporalService)
+	crawlService := crawl.NewCrawlService(crawlRepo, cfg, temporalOrchestrator)
 	crawlHandler := crawl.NewCrawlHandler(crawlService)
 	
 	

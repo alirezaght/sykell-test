@@ -2,8 +2,8 @@ package main
 
 import (
 	"sykell-backend/internal/config"
-	"sykell-backend/internal/crawl"
 	"sykell-backend/internal/logger"
+	"sykell-backend/internal/temporal"
 
 	"go.uber.org/zap"
 )
@@ -24,7 +24,7 @@ func main() {
 	logger.Info("Starting Temporal worker")
 	
 	// Start the worker
-	if err := crawl.StartWorker(cfg); err != nil {
+	if err := temporal.StartWorker(cfg); err != nil {
 		logger.Fatal("Failed to start worker", zap.Error(err))
 	}
 }

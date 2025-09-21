@@ -44,7 +44,7 @@ func (s *CrawlService) StopCrawl(ctx context.Context, userID string, urlID strin
 		logger.Info("Successfully updated crawl status to stopped", zap.String("crawl_id", crawl.ID))
 
 		// Signal the workflow to stop		
-		if err = s.temporalService.GetTemporalClient().CancelWorkflow(ctx, crawl.WorkflowID, ""); err != nil {		
+		if err = s.orchestrator.Stop(ctx, crawl.WorkflowID); err != nil {		
 			logger.Error("Error canceling workflow", zap.Error(err))
 			return fmt.Errorf("failed to cancel workflow: %w", err)
 		}
