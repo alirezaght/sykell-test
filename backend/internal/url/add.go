@@ -51,10 +51,9 @@ func normalizeURL(raw string) (string, string, error) {
 
 // AddURL adds a new URL for the specified user
 func (s *Service) AddURL(ctx context.Context, userID string, request AddRequest) error {
-	normalizeURL, domain, err := normalizeURL(request.URL)
+	normalizedURL, domain, err := normalizeURL(request.URL)
 	if err != nil {
 		return err
-	}	
-	s.repo.CreateURL(ctx, userID, normalizeURL, domain)
-	return nil
+	}
+	return s.repo.CreateURL(ctx, userID, normalizedURL, domain)
 }
