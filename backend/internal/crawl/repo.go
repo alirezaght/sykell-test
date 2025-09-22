@@ -3,6 +3,7 @@ package crawl
 import (
 	"context"
 	"database/sql"
+	"time"
 	"sykell-backend/internal/config"
 	"sykell-backend/internal/db"
 )
@@ -107,7 +108,8 @@ func (r *crawlRepo) UpdateCrawlResult(ctx context.Context, crawlID string, htmlV
 		ExternalLinksCount:    sql.NullInt32{Int32: externalLinksCount, Valid: true},
 		InaccessibleLinksCount: sql.NullInt32{Int32: inaccessableLinksCount, Valid: true},
 		HasLoginForm:          hasLoginForm,
-		Status:				db.CrawlsStatus(status),
+		Status: db.CrawlsStatus(status),		
+		FinishedAt: sql.NullTime{Time: time.Now(), Valid: true},		
 	})
 	return err
 }
