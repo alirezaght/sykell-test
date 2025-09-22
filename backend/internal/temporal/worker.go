@@ -1,17 +1,26 @@
 package temporal
 
 import (
+	"context"
 	"sykell-backend/internal/config"
 	"sykell-backend/internal/crawl"
 	"sykell-backend/internal/logger"
 	"time"
 
+	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 	"go.uber.org/zap"
 )
+
+func crawlActivity(ctx context.Context, input crawl.WorlFlowInput) error {
+	activity.GetLogger(ctx)
+	return crawl.CrawlURLActivity(ctx, input, func(ctx context.Context, details string) {
+		activity.RecordHeartbeat(ctx, details)
+	})
+}
 
 // CrawlWorkflow is the main workflow for crawling a URL, it orchestrates the crawl activity
 func CrawlWorkflow(ctx workflow.Context, input crawl.WorlFlowInput) error {
@@ -34,7 +43,7 @@ func CrawlWorkflow(ctx workflow.Context, input crawl.WorlFlowInput) error {
 	ctx = workflow.WithActivityOptions(ctx, activityOptions)
 	
 	logger.Info("Executing crawl activity", "url", input.URL, "crawl_id", input.CrawlID)
-	err := workflow.ExecuteActivity(ctx, crawl.CrawlURLActivity, input).Get(ctx, nil)
+	err := workflow.ExecuteActivity(ctx, crawlActivity, input).Get(ctx, nil)
 	if err != nil {
 		logger.Error("Crawl workflow failed", "error", err, "url", input.URL, "crawl_id", input.CrawlID)
 		return err
@@ -89,7 +98,7 @@ func StartWorker(config *config.Config) error {
 	w.RegisterWorkflow(CrawlWorkflow)
 
 	// Register activities
-	w.RegisterActivity(crawl.CrawlURLActivity)
+	w.RegisterActivity(crawlActivity)
 	
 	logger.Info("Starting Temporal worker on task queue", zap.String("task_queue", TaskQueueName))
 	
