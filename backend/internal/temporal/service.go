@@ -57,9 +57,9 @@ type temporalOrchestrator struct {
 }
 
 // NewOrchestrator creates a new Orchestrator
-func NewOrchestrator(service Service) *temporalOrchestrator {
+func NewOrchestrator(service *Service) *temporalOrchestrator {
 	return &temporalOrchestrator{
-		service: &service,
+		service: service,
 	}
 }
 
