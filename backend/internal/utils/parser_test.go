@@ -226,7 +226,7 @@ func TestCountLinks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			doc := parseHTML(tt.html)
-			result := CountLinks(doc, tt.baseURL)
+			result := CountLinks(t.Context(), doc, tt.baseURL)
 			
 			// Check that we have the expected number of links total
 			totalLinks := len(result.Links)
@@ -551,7 +551,7 @@ func TestCheckURLStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := checkURLStatus(tt.url)
+			result := checkURLStatus(t.Context(), tt.url)
 			
 			if tt.expected == nil {
 				if result != nil {

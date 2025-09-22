@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strings"
@@ -105,7 +106,7 @@ type LinkAnalysis struct {
 }
 
 // CountLinks analyzes and counts internal, external, and inaccessible links in the HTML document
-func CountLinks(doc *html.Node, baseURL string) LinkAnalysis {
+func CountLinks(ctx context.Context, doc *html.Node, baseURL string) LinkAnalysis {
 	result := LinkAnalysis{
 		Counts: map[string]int{
 			"internal":     0,
@@ -175,7 +176,7 @@ func CountLinks(doc *html.Node, baseURL string) LinkAnalysis {
 			}
 
 			// Check URL accessibility by making HTTP request
-			statusCode := checkURLStatus(absoluteURL)
+			statusCode := checkURLStatus(ctx, absoluteURL)
 			linkInfo.StatusCode = statusCode
 			
 			// Categorize link based on status code
@@ -221,7 +222,7 @@ func extractTextContent(n *html.Node) string {
 }
 
 // checkURLStatus performs a HEAD request to check the status code of a URL
-func checkURLStatus(urlStr string) *int {
+func checkURLStatus(ctx context.Context, urlStr string) *int {
 	client := &http.Client{
 		Timeout: 15 * time.Second, // Increased timeout
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -234,7 +235,7 @@ func checkURLStatus(urlStr string) *int {
 	}
 
 	// Set a reasonable User-Agent to avoid blocking
-	req, err := http.NewRequest("HEAD", urlStr, nil)
+	req, err := http.NewRequestWithContext(ctx, "HEAD", urlStr, nil)
 	if err != nil {
 		return nil
 	}

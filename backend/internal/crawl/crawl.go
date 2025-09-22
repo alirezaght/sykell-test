@@ -144,7 +144,7 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 	
 
 	// Count headings
-	activity.RecordHeartbeat(ctx, "About to count headings")
+	activity.RecordHeartbeat(ctx, "About to count headings")	
 	headingCounts := utils.CountHeadings(doc)
 	activity.RecordHeartbeat(ctx, "Heading counting completed")
 	h1Count := int32(headingCounts["h1"])
@@ -159,7 +159,7 @@ func CrawlURLActivity(ctx context.Context, input WorlFlowInput) error {
 	// Count links
 	logger.Info("Analyzing links")
 	activity.RecordHeartbeat(ctx, "About to start link analysis")
-	linkAnalysis := utils.CountLinks(doc, input.URL)
+	linkAnalysis := utils.CountLinks(ctx, doc, input.URL)
 	activity.RecordHeartbeat(ctx, "Link analysis function completed")
 	linkCounts := linkAnalysis.Counts
 	internalLinksCount := int32(linkCounts["internal"])
