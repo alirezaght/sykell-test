@@ -36,7 +36,7 @@ func (h *CrawlHandler) StartCrawl(c echo.Context) error {
 	err := h.crawlService.StartCrawl(ctx, userID.(string), urlID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to retrieve user profile",
+			"error": "Failed to star crawl: " + err.Error(),
 		})
 	}
 

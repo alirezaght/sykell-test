@@ -36,7 +36,7 @@ func (h *Handler) AddURL(c echo.Context) error {
 	err := h.urlService.AddURL(ctx, userID.(string), req)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to retrieve user profile",
+			"error": "Failed to add URL",
 		})
 	}
 

@@ -34,7 +34,7 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (UserResponse, 
 	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
 	defer cancel()
 	queries := db.New(r.sqlDB)
-	user, err := queries.GetUserByEmail(context.Background(), email)
+	user, err := queries.GetUserByEmail(ctx, email)
 	if err != nil {
 		return UserResponse{}, err
 	}
