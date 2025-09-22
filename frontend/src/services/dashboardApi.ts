@@ -1,10 +1,10 @@
 import api from './api';
-import type { DashboardResponse, DashboardFilters, CreateUrlRequest, CreateUrlResponse, BatchCrawlRequest, BatchCrawlResponse } from '../types/dashboard';
+import type { DashboardResponse, DashboardFilters, CreateUrlRequest, CreateUrlResponse, BatchCrawlRequest } from '../types/dashboard';
 
 export const dashboardApi = {
   getDashboardData: async (filters: DashboardFilters = {}): Promise<DashboardResponse> => {
     const params = new URLSearchParams();
-    
+
     if (filters.query_filter) {
       params.append('query', filters.query_filter);
     }
@@ -22,7 +22,7 @@ export const dashboardApi = {
     }
 
     const response = await api.get(`/urls?${params.toString()}`);
-    
+
     // Transform backend response to match frontend interface
     return {
       urls: response.data.urls || [],
@@ -45,32 +45,15 @@ export const dashboardApi = {
     await api.delete(`/urls/${urlId}`);
   },
 
-  batchCrawl: async (data: BatchCrawlRequest): Promise<BatchCrawlResponse> => {
+  batchCrawl: async (data: BatchCrawlRequest): Promise<void> => {
     const { url_ids, action } = data;
-    let successCount = 0;
-    let failedCount = 0;
-    const errors: string[] = [];
 
-    // Process each URL individually
-    for (const urlId of url_ids) {
-      try {
-        if (action === 'start') {
-          await api.post(`/crawl/start/${urlId}`);
-        } else if (action === 'stop') {
-          await api.post(`/crawl/stop/${urlId}`);
-        }
-        successCount++;
-      } catch (error) {
-        failedCount++;
-        errors.push(`Failed to ${action} crawl for URL ${urlId}`);
-      }
+    if (action === 'start') {
+      await api.post(`/crawl/batch/start`, { url_ids });
+    } else if (action === 'stop') {
+      await api.post(`/crawl/batch/stop`, { url_ids });
     }
 
-    return {
-      success_count: successCount,
-      failed_count: failedCount,
-      message: `Batch ${action}: ${successCount} successful, ${failedCount} failed`,
-    };
   },
 
   startCrawl: async (urlId: string): Promise<void> => {
@@ -81,26 +64,8 @@ export const dashboardApi = {
     await api.post(`/crawl/stop/${urlId}`);
   },
 
-  batchDelete: async (urlIds: string[]): Promise<{ successCount: number; failedCount: number; errors: string[] }> => {
-    let successCount = 0;
-    let failedCount = 0;
-    const errors: string[] = [];
-
-    // Process each URL individually
-    for (const urlId of urlIds) {
-      try {
-        await api.delete(`/urls/${urlId}`);
-        successCount++;
-      } catch (error) {
-        failedCount++;
-        errors.push(`Failed to delete URL ${urlId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    }
-
-    return {
-      successCount,
-      failedCount,
-      errors,
-    };
+  batchDelete: async (urlIds: string[]): Promise<void> => {    
+    await api.delete(`/urls/batch`, { data: { url_ids: urlIds } });    
+        
   },
 };

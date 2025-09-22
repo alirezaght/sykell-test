@@ -72,9 +72,3 @@ export interface BatchCrawlRequest {
   url_ids: string[];
   action: 'start' | 'stop';
 }
-
-export interface BatchCrawlResponse {
-  success_count: number;
-  failed_count: number;
-  message: string;
-}

@@ -10,6 +10,7 @@ import (
 // Repo defines the interface for URL repository operations
 type Repo interface {
 	RemoveURL(ctx context.Context, userID string, urlID string) error
+	RemoveURLBatchRequest(ctx context.Context, userID string, urlIDs []string) error
 	CreateURL(ctx context.Context, userID string, normalizedURL string, domain string) error
 	CountURLsByFilter(ctx context.Context, userID string, query string) (int64, error)
 	GetUrlsWithLatestCrawlsFiltered(ctx context.Context, userID string, limit int32, offset int32, sortBy string, sortOrder string, filter string) ([]CrawlResult, error)
@@ -38,6 +39,19 @@ func (r *urlRepo) RemoveURL(ctx context.Context, userID string, urlID string) er
 	})
 	return err
 }
+
+// RemoveURLBatchRequest deletes multiple URLs by their IDs for the specified user
+func (r *urlRepo) RemoveURLBatchRequest(ctx context.Context, userID string, urlIDs []string) error {
+	ctx, cancel := context.WithTimeout(ctx, config.DefaultTimeout)
+	defer cancel()
+	queries := db.New(r.sqlDB)
+	err := queries.DeleteBatchURLsByIdsAndUserId(ctx, db.DeleteBatchURLsByIdsAndUserIdParams{
+		UrlIds: urlIDs,
+		UserID: userID,
+	})
+	return err
+}
+	
 
 // CreateURL creates a new URL entry for the specified user
 func (r *urlRepo) CreateURL(ctx context.Context, userID string, normalizedURL string, domain string) error {

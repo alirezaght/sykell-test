@@ -1,15 +1,18 @@
 package main
 
 import (
+	// "context"
 	"database/sql"
 	"net/http"
+	"sykell-backend/internal/config"
 	"sykell-backend/internal/crawl"
-	"sykell-backend/internal/config"	
 	"sykell-backend/internal/logger"
 	sykellMiddleware "sykell-backend/internal/middleware"
+	// simpleworker "sykell-backend/internal/simple_worker"
 	"sykell-backend/internal/temporal"
 	"sykell-backend/internal/url"
 	"sykell-backend/internal/user"
+	// "time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/labstack/echo/v4"
@@ -54,16 +57,24 @@ func main() {
 	// Initialize Temporal client with better connection settings
 	temporalService := temporal.NewService(cfg)
 	temporalService.Setup()
+
 	
 	// Ensure proper cleanup on shutdown	
 	defer temporalService.Close()	
+
+	temporalOrchestrator := temporal.NewOrchestrator(temporalService)
+
+	// simpleWorker := simpleworker.NewSimpleWorker(100, 5 * time.Minute)
+	// simpleWorker.StartWorkerLoop(context.Background())
+	// defer simpleWorker.Shutdown()
+	
 
 	// Initialize Temporal service
 	urlRepo := url.NewRepo(db)
 	urlService := url.NewService(urlRepo, cfg)
 	urlHandler := url.NewHandler(urlService)
 
-	temporalOrchestrator := temporal.NewOrchestrator(temporalService)
+	
 	crawlRepo := crawl.NewRepo(db)
 	crawlService := crawl.NewCrawlService(crawlRepo, cfg, temporalOrchestrator)
 	crawlHandler := crawl.NewCrawlHandler(crawlService)
@@ -117,12 +128,15 @@ func main() {
 	protected.GET("/urls", urlHandler.ListURLs)
 	protected.POST("/urls", urlHandler.AddURL)
 	protected.DELETE("/urls/:id", urlHandler.RemoveURL)
+	protected.DELETE("/urls/batch", urlHandler.RemoveURLBatch)
 	
 	// Crawl routes (only if Temporal is available)
 	
 	logger.Debug("Registering crawl routes...")
 	protected.POST("/crawl/start/:id", crawlHandler.StartCrawl)
+	protected.POST("/crawl/batch/start", crawlHandler.StartCrawlBatch)
 	protected.POST("/crawl/stop/:id", crawlHandler.StopCrawl)
+	protected.POST("/crawl/batch/stop", crawlHandler.StopCrawlBatch)
 	
 	// Stream endpoint with cookie-based authentication
 	streamProtected := api.Group("", sykellMiddleware.JWTMiddleware([]byte(cfg.JWTSecret), true))

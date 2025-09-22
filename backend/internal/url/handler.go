@@ -66,6 +66,33 @@ func (h *Handler) RemoveURL(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+// RemoveURLBatch handles removing multiple URLs
+func (h *Handler) RemoveURLBatch(c echo.Context) error {
+	userID := c.Get("user_id")
+	var req RemoveURLBatchRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid request body",
+		})
+	}
+	if len(req.URLIDs) == 0 {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "No URL IDs provided",
+		})
+	}
+
+	ctx := c.Request().Context()
+
+	err := h.urlService.RemoveURLBatch(ctx, userID.(string), req.URLIDs)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to remove URLs",
+		})
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
 
 // ListURLs handles listing URLs with pagination
 func (h *Handler) ListURLs(c echo.Context) error {

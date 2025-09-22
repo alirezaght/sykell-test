@@ -2,12 +2,6 @@ package crawl
 
 import "time"
 
-// Constants for crawl workflow configuration
-const (
-	TaskQueueName = "crawl-task-queue"
-	WorkflowName  = "CrawlWorkflow"
-)
-
 // WorlFlowInput represents the input parameters for the crawl workflow
 type WorlFlowInput struct {
 	URLID      string `json:"url_id"`
@@ -43,4 +37,9 @@ type URLResponse struct {
 type CrawlResponse struct {
 	ID string `json:"id"`
 	WorkflowID string `json:"workflow_id"`	
+}
+
+// StartCrawlBatchRequest represents the request payload for starting a batch crawl
+type StartCrawlBatchRequest struct {
+	URLIDs []string `json:"url_ids"`
 }

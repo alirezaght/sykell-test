@@ -54,4 +54,7 @@ type AddRequest struct {
 	URL string `json:"url" validate:"required,url"`
 }
 
-
+// RemoveURLBatchRequest represents the request payload for removing a batch of URLs
+type RemoveURLBatchRequest struct {
+	URLIDs []string `json:"url_ids" validate:"required,min=1,dive,required"`
+}

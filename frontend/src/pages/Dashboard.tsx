@@ -116,17 +116,10 @@ export const Dashboard: React.FC = () => {
 
   const handleBatchDelete = async (urlIds: string[]) => {
     try {
-      const result = await batchDeleteMutation.mutateAsync(urlIds);
+      await batchDeleteMutation.mutateAsync(urlIds);
       setSelectedUrls([]); // Clear selection after batch operation
-      refetch();
+      refetch();            
       
-      // You might want to show a toast notification here
-      if (result.failedCount > 0) {
-        console.warn(`Batch delete completed with errors: ${result.successCount} successful, ${result.failedCount} failed`);
-        // Optionally show error details: result.errors
-      } else {
-        console.log(`Successfully deleted ${result.successCount} URLs`);
-      }
     } catch (error) {
       console.error('Failed to batch delete URLs:', error);
     }

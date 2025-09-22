@@ -116,3 +116,8 @@ INSERT INTO urls (
 -- name: DeleteURLByIdAndUserId :exec
 DELETE FROM urls
 WHERE id = ? AND user_id = ?;
+
+
+-- name: DeleteBatchURLsByIdsAndUserId :exec
+DELETE FROM urls
+WHERE id IN (sqlc.slice(url_ids)) AND user_id = ?;

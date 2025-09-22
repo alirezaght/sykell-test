@@ -44,6 +44,45 @@ func (h *CrawlHandler) StartCrawl(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+// StartCrawl batch handles starting multiple crawls
+func (h *CrawlHandler) StartCrawlBatch(c echo.Context) error {
+	userID := c.Get("user_id")
+	var req StartCrawlBatchRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid request body",
+		})
+	}
+	if len(req.URLIDs) == 0 {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "No URL IDs provided",
+		})
+	}
+
+	ctx := c.Request().Context()
+	var failedURLs []string
+
+	for _, urlID := range req.URLIDs {
+		err := h.crawlService.StartCrawl(ctx, userID.(string), urlID)
+		if err != nil {
+			logger.Error("Failed to start crawl for URL", 
+				zap.String("url_id", urlID), 
+				zap.String("user_id", userID.(string)),
+				zap.Error(err))
+			failedURLs = append(failedURLs, urlID)
+		}
+	}
+
+	if len(failedURLs) > 0 {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error":       "Failed to start crawl for some URLs",
+			"failed_urls": failedURLs,
+		})
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
 // StopCrawl handles stopping an active crawl
 func (h *CrawlHandler) StopCrawl(c echo.Context) error {
 	userID := c.Get("user_id")
@@ -75,6 +114,45 @@ func (h *CrawlHandler) StopCrawl(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Crawl stopped successfully",
 	})
+}
+
+// StopCrawlBatch handles stopping multiple active crawls
+func (h *CrawlHandler) StopCrawlBatch(c echo.Context) error {
+	userID := c.Get("user_id")
+	var req StartCrawlBatchRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid request body",
+		})
+	}
+	if len(req.URLIDs) == 0 {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "No URL IDs provided",
+		})
+	}
+
+	ctx := c.Request().Context()
+	var failedURLs []string
+
+	for _, urlID := range req.URLIDs {
+		err := h.crawlService.StopCrawl(ctx, userID.(string), urlID)
+		if err != nil {
+			logger.Error("Failed to stop crawl for URL", 
+				zap.String("url_id", urlID), 
+				zap.String("user_id", userID.(string)),
+				zap.Error(err))
+			failedURLs = append(failedURLs, urlID)
+		}
+	}
+
+	if len(failedURLs) > 0 {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error":       "Failed to stop crawl for some URLs",
+			"failed_urls": failedURLs,
+		})
+	}
+
+	return c.NoContent(http.StatusOK)
 }
 
 // NotifyCrawlUpdate handles internal notifications to trigger SSE updates
