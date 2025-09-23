@@ -80,4 +80,4 @@ SET
     error_message = ?,
     finished_at = ?,
     updated_at = CURRENT_TIMESTAMP
-WHERE id = ?;
+WHERE id = ? AND status='running';;
